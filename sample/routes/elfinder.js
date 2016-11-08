@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-var el = require('../controllers/elfinder'),
+var el = require('../../elfinder-connector'),
     path = require('path'),
     promise = require('promise'),
     multer = require('multer'),

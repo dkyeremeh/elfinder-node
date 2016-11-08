@@ -326,16 +326,16 @@ m.rename = function(user, opts){
 m.upload = function(user, opts, files){
     return new promise(function(resolve, reject){
         var target = m.decode(opts.target);
+
         var tasks = [];
         for(var i=0; i<files.length; i++){
             var _file = files[i];
-            var _dest = opts.upload_path[i];
+            //var _dest = opts.upload_path[i];
             var _source = path.resolve(_file.path);
             var _filename = _file.originalname;
             var _saveto = target.absolutePath;
-
-            if (opts.target != _dest){
-                _saveto = path.join(_saveto, path.dirname(_dest));
+            if (opts.upload_path){
+                _saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
             }
             if (opts.renames && opts.renames.indexOf(_file.originalname)){
                 _filename = m.suffix(_file.originalname, opts.suffix);
