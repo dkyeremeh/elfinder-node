@@ -56,6 +56,7 @@
 			$().ready(function() {
 				var elf = $('#elfinder').elfinder({
 				// set your elFinder options here
+				urlUpload: 'http://localhost:3000/connector/upload',
 				url: 'http://localhost:3000/connector',  // connector URL
 				getFileCallback: function(file) { // editor callback
 					FileBrowserDialogue.mySubmit(file.url);
