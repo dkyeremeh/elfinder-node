@@ -14,30 +14,10 @@ m.config = {
     disabled: ['chmod', 'zipdl', 'mkfile'],
     volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local']   
 }
-m.config.acl = function(user, dir){
-    var volume = -1;
-    for(var i=0; i<m.config.volumes.length; i++){
-        if (dir.indexOf(m.config.volumes[i]) == 0){
-            volume = i;
-        }
-    }
-    if (volume == 0){//public
-        return { read: 1, write: 1, locked: 0 }
-    }else if (volume == 1){
-        var mypath = path.join(m.config.volumes[1], user);
-        if (dir.indexOf(mypath) == 0){
-            return {read: 1, write: 1, locked: 0}
-        }else{
-            return {read: 1, write: 0, locked: 1}
-        }
-    }else if (volume == 2){
-        if (dir.indexOf(m.config.volumes[2]) == 0){
-            return {read: 1, write: 1, locked: 0}
-        }else{
-            return {read: 0, write: 0, locked: 1}
-        }
-    }
-    return {}
+m.config.acl = function(user, path){
+    var volume = m.volume(path);
+    return m.config.roots[volume].permissions || {read: 1, write: 1, locked: 0};
+
 }
 
 m.setup = function(opts){
@@ -593,7 +573,7 @@ m.info = function(p, user){
                         create: ['application/zip'],
                         createext: {'application/zip': 'zip'}
                     },
-                    url: m.config.router + '/file/' + info.volume + '/'
+                    url: m.config.roots[info.volume].URL
                 }
                 if (m.config.volumeicons[info.volume]){
                     r.options.csscls = m.config.volumeicons[info.volume];
@@ -662,7 +642,7 @@ m.decode = function(dir){
 }
 m.parse = function(p){
     var v = m.volume(p);
-    var root = m.config.volumes[v];
+    var root = m.config.volumes[v] || "";
     var relative = p.substr(root.length, p.length - root.length);
     if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
     return {
