@@ -1,19 +1,20 @@
 var express = require('express');
 var router = express.Router();
-var connector = require('./connector'),
+var LFS = require('./LocalFileStorage'),
+	connector = LFS.api,
+	utils = require("./utils");
 	path = require('path'),
 	promise = require('promise'),
 	multer = require('multer'),
 	fs = require('fs-extra'),
 	_ = require('underscore');
+	
 
 module.exports = function( roots ){
 
 	var volumes = roots.map( (r)=>r.path );
-		
-	/* GET users listing. */
+
 	var media = path.resolve( volumes[0] );
-	var user = "public";
 
 	connector.setup({
 		roots: roots,
@@ -28,8 +29,9 @@ module.exports = function( roots ){
 		if (cmd == 'file') {
 			var target = connector.decode(req.query.target);
 			res.sendFile(target.absolutePath);
-		} else if (connector[cmd]) {
-			connector[cmd](user, req.query).then(function (result) {
+		}
+		else if (connector[cmd]) {
+			connector[cmd]( req.query, res).then(function (result) {
 				res.json(result);
 			}).catch(function (e) {
 				res.json({ error: e.message });
@@ -40,7 +42,7 @@ module.exports = function( roots ){
 	router.post('/', upload.array('upload[]', 10), function (req, res, next) {
 		var cmd = req.body.cmd;
 		if (cmd && connector[cmd]) {
-			connector[cmd](user, req.body, req.files).then(function (result) {
+			connector[cmd](req.body, req.files, res).then(function (result) {
 				res.json(result);
 			}).catch(function (e) {
 				res.json({ error: e.message });
@@ -65,3 +67,6 @@ module.exports = function( roots ){
 	return router;
 
 }
+
+module.exports.LocalFileStorage = LFS;
+module.exports.utils = utils;

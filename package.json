@@ -1,8 +1,8 @@
 {
   "name": "elfinder-node",
-  "version": "0.1.0",
-  "description": "Elfinder connector for NodeJS",
-  "main": "router.js",
+  "version": "0.2.0",
+  "description": "Elfinder adaptor for NodeJS",
+  "main": "elfinder.js",
   "author": "d.kyeremeh@dekyfin.com",
   "license": "MIT",
   "dependencies": {
