@@ -13,6 +13,7 @@
 	- encode
 	- decode: { volume, path, name }
 - Modify adapter to call each driver for each volume
+	returns information which will be used by the client to display it as a drive
 
 - Remove user from LocalFileStorage
 - Pass `res` object to driver functions

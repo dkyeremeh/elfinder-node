@@ -16,7 +16,7 @@ module.exports = function( roots ){
 
 	var media = path.resolve( volumes[0] );
 
-	connector.setup({
+	connector({
 		roots: roots,
 		tmbroot: path.join(media, '.tmb'),
 		volumes: volumes
