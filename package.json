@@ -1,6 +1,6 @@
 {
   "name": "elfinder-node",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Elfinder adapter for NodeJS",
   "main": "elfinder.js",
   "author": "d.kyeremeh@dekyfin.com",
