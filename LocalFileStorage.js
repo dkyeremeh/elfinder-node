@@ -1,5 +1,5 @@
-var lz = require('lzutf8'),
-	path = require('path'),
+var lz = require('lzutf8'),	//Remove after decoupling
+	path = require('path'), //Remove
 	mime = require('mime-types'),
 	promise = require('promise'),
 	_ = require('underscore'),
@@ -7,12 +7,13 @@ var lz = require('lzutf8'),
 	fsextra = require('fs-extra'),
 	archiver = require('archiver'),
 	fs = require('fs');
+
 elFinder = require("elfinder-node");
 
 var m = {};
 config = {
 	router: '/connector',
-	disabled: ['chmod', 'zipdl', 'mkfile', 'edit', 'put', 'size'],
+	disabled: ['chmod', 'mkfile', 'edit', 'put', 'size'],
 	volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local']
 }
 config.acl = function(path) {

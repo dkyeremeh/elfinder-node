@@ -11,7 +11,7 @@
 	- volume
 	- parse
 	- encode
-	- decode
+	- decode: { volume, path, name }
 - Modify adapter to call each driver for each volume
 
 - Remove user from LocalFileStorage
