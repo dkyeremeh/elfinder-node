@@ -10,21 +10,17 @@ var lz = require('lzutf8'),	//Remove after decoupling
 
 elFinder = require("./elfinder");
 
-var api = {};
-var private = {}
-config = {
-	router: '/connector',
+var api = {},
+	private = {};
+
+var config = {
 	disabled: ['chmod', 'mkfile', 'zipdl', 'edit', 'put', 'size'],
-	volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local']
-}
-config.acl = function(path) {
-	var volume = private.volume(path);
-	return config.roots[volume].permissions || {
+	volumeicons: ['elfinder-navbar-root-local'],
+	permissions: {
 		read: 1,
 		write: 1,
 		locked: 0
-	};
-
+	}
 }
 
 
@@ -204,7 +200,7 @@ api.open = function(opts, res) {
 		var data = {};
 		data.options = {
 			uiCmdMap: [],
-			tmbUrl: path.join(config.roots[0].URL, '.tmb/', )
+			tmbUrl: path.join(config.URL, '.tmb/', )
 		}
 		var _init = opts.init && opts.init == true;
 		var _target = opts.target;
@@ -213,7 +209,7 @@ api.open = function(opts, res) {
 			if (config.init) config.init();
 			data.api = "2.1";
 			if (!_target) {
-				_target = private.encode(config.volumes[0] + path.sep);
+				_target = private.encode(config.path + path.sep);
 			}
 		}
 		if (!_target) {
@@ -268,7 +264,7 @@ api.parents = function(opts, res) {
 				tree = results;
 				var read = function(t) {
 					var folder = path.dirname(t);
-					var isRoot = config.volumes.indexOf(t) >= 0;
+					var isRoot = t == config.path;
 					if (isRoot) {
 						return resolve({
 							tree: tree
@@ -633,7 +629,7 @@ private.decode = function(dir) {
 		inputEncoding: "Base64"
 	});
 	name = path.basename(relative);
-	root = config.volumes[volume];
+	root = config.path;
 	return {
 		volume: volume,
 		dir: root,
@@ -657,8 +653,7 @@ private.encode = function(dir) {
 }
 
 private.filepath = function(volume, filename) {
-	if (volume < 0 || volume > 2) return null;
-	return path.join(config.volumes[volume], path.normalize(filename));
+	return path.join(config.path, path.normalize(filename));
 }
 
 private.info = function(p) {
@@ -702,13 +697,13 @@ private.info = function(p) {
 							'application/zip': 'zip'
 						}
 					},
-					url: config.roots[info.volume].URL
+					url: config.URL
 				}
 				if (config.volumeicons[info.volume]) {
 					r.options.csscls = config.volumeicons[info.volume];
 				}
 			}
-			var acl = config.acl(p);
+			var acl = config.permissions;
 			r.read = acl.read;
 			r.write = acl.write;
 			r.locked = acl.locked;
@@ -730,11 +725,15 @@ private.info = function(p) {
 	})
 }
 
-private.init = function() {
+private.init = function( volume ) {
+	var tasks = [ private.info( config.path ) ];
+
+	/* PREVIOUSLY
 	var tasks = [];
 	_.each(config.volumes, function(volume) {
 		tasks.push(private.info(volume));
 	})
+	*/
 
 	return promise.all(tasks)
 		.then(function(results) {
@@ -747,12 +746,11 @@ private.init = function() {
 
 //Used by private.encode & private.info
 private.parse = function(p) {
-	var v = private.volume(p);
-	var root = config.volumes[v] || "";
+	var root = config.path || "";
 	var relative = p.substr(root.length, p.length - root.length);
 	if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
 	return {
-		volume: v,
+		volume: config.volume,
 		dir: root,
 		path: relative,
 		isRoot: relative == path.sep
@@ -790,21 +788,24 @@ private.tmbfile = function(filename) {
 	return path.join(config.tmbroot, filename);
 }
 
-//Used by private.parse & config.acl
-private.volume = function(p) {
-	for (var i = 0; i < config.volumes.length; i++) {
-		if (i > 9) return -1;
-		if (p.indexOf(config.volumes[i]) == 0) {
-			return i;
-		}
-	}
-	return -1;
-}
-
 
 module.exports = function( options ){
 	Object.assign(config, options);
+
+	//set tmbroot
+	config.tmbroot = path.join( path.resolve( config.path ), ".tmb" );
 };
 module.exports.api = api;
+
+module.exports.init = function(config){
+	return {
+		name: path.basename( config.path ),
+		size: 4096,
+		hash: "v" + config.volume + "_Lw",
+		mime: "directory",
+		ts:	1521143190,
+		volumeid: "v" + config.volume + "_",
+	}
+}
 
 

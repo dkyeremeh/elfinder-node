@@ -5,8 +5,7 @@ const utils ={};
 
 //Encode a given directory for client
 utils.encode = function( volume, p ) {
-	var info = utils.parse(dir);
-	relative = lz.compress(info.path, {
+	relative = lz.compress(p, {
 			outputEncoding: "Base64"
 		})
 		.replace(/=+$/g, '')

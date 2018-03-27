@@ -10,19 +10,19 @@
 
 ## v.0.3
 - [x] Utils implementation
-	- [x] volume
-	- [x] encode
-	- [x] decode: { volume, path, name }
+	- [x] encode(volume, path ) : 
+	- [x] decode(target) : { volume, path, name }
 - [x] Pass `res` object to driver functions
 - [ ] Refactor LFS to use utils when they replace private functions
 - [ ] Refactor private.parse to use utils || remove it from code
-- [ ] Remove dependency of LFS on private.volume
-- [ ] Remove adapter's dependency on LFS
+- [x] Remove dependency of LFS on private.volume
+- [-] Remove adapter's dependency on LFS
+- [-] Call `init` for all volume driver when req.query.init is set
 
 ## v0.4
 - [ ] Remove `file` access dependency from the connector (to be done in LFS)
-- [ ] Pass router in adapter to driver to allow custom routes
-- [ ] Move thumb access to driver
+- [x] Pass router in adapter to driver to allow custom routes
+- [ ] Implement thumb access in LFS
 
 ## v0.5 (Standardizing the API)
 - [ ] Change configuration structure to eFinder [connector configuration ](https://github.com/Studio-42/elFinder/wiki/Connector- configuration- options)
