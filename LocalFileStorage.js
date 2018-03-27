@@ -8,13 +8,13 @@ var lz = require('lzutf8'),	//Remove after decoupling
 	archiver = require('archiver'),
 	fs = require('fs');
 
-elFinder = require("elfinder-node");
+elFinder = require("./elfinder");
 
 var api = {};
 var private = {}
 config = {
 	router: '/connector',
-	disabled: ['chmod', 'mkfile', 'edit', 'put', 'size'],
+	disabled: ['chmod', 'mkfile', 'zipdl', 'edit', 'put', 'size'],
 	volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local']
 }
 config.acl = function(path) {
@@ -29,10 +29,10 @@ config.acl = function(path) {
 
 
 
-api.archive = function(opts) {
+api.archive = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var target = private.decode(opts.target);
-		api.compress(opts.targets, path.join(target.absolutePath, opts.name))
+		private.compress(opts.targets, path.join(target.absolutePath, opts.name))
 			.then(function() {
 				return private.info(path.join(target.absolutePath, opts.name));
 			})
@@ -47,7 +47,7 @@ api.archive = function(opts) {
 	})
 }
 
-api.dim = function(opts) {
+api.dim = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var target = private.decode(opts.target);
 		Jimp.read(target.absolutePath)
@@ -56,6 +56,27 @@ api.dim = function(opts) {
 					dim: img.bitmap.width + 'x' + img.bitmap.height
 				});
 			})
+	})
+}
+
+api.copy = function(opts, res) {
+	return new promise(function(resolve, reject) {
+		if (fs.existsSync(opts.dst)) {
+			return reject('Destination exists');
+		}
+		fsextra.copy(opts.src, opts.dst, function(err) {
+			if (err) return reject(err);
+			private.info(opts.dst)
+				.then(function(info) {
+					resolve({
+						added: [info],
+						changed: [m.encode(path.dirname(opts.dst))]
+					});
+				})
+				.catch(function(err) {
+					reject(err);
+				})
+		})
 	})
 }
 
@@ -89,7 +110,14 @@ api.duplicate = function(opt) {
 	})
 }
 
-api.get = function(opts) {
+api.file = function(opts, res) {
+	return new promise(function(resolve, reject) {
+		var target = private.decode(opts.target);
+		res.sendFile(target.absolutePath);
+	})
+}
+
+api.get = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var target = private.decode(opts.target);
 		fs.readFile(target.absolutePath, 'utf8', function(err, data) {
@@ -100,20 +128,17 @@ api.get = function(opts) {
 		})
 	})
 }
-/**
- * p is absolute path.
- */
 
-//
-api.info = function(opts){
+//TODO: Implement this
+api.info = function(opts, res){
 
 }
 
-api.ls = function(opts) {
+api.ls = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
 		var info = private.decode(opts.target);
-		api.readdir(info.absolutePath)
+		private.readdir(info.absolutePath)
 			.then(function(files) {
 				var _files = files.map(function(e) {
 					return e.name
@@ -129,7 +154,7 @@ api.ls = function(opts) {
 }
 
 //TODO check permission.
-api.mkdir = function(opts) {
+api.mkdir = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var dir = private.decode(opts.target);
 		var tasks = [];
@@ -152,7 +177,29 @@ api.mkdir = function(opts) {
 			})
 	})
 }
-api.open = function(opts) {
+
+api.move = function(opts, res) {
+	return new promise(function(resolve, reject) {
+		if (fs.existsSync(opts.dst)) {
+			return reject('Destination exists');
+		}
+		fsextra.move(opts.src, opts.dst, function(err) {
+			if (err) return reject(err);
+			private.info(opts.dst)
+				.then(function(info) {
+					resolve({
+						added: [info],
+						removed: opts.upload ? [] : [m.encode(opts.src)]
+					});
+				})
+				.catch(function(err) {
+					reject(err);
+				})
+		})
+	})
+}
+
+api.open = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var data = {};
 		data.options = {
@@ -195,7 +242,7 @@ api.open = function(opts) {
 			.then(function(files) {
 				data.files = files;
 				if (_init) {
-					return api.init();
+					return private.init();
 				} else {
 					return promise.resolve(null);
 				}
@@ -211,12 +258,12 @@ api.open = function(opts) {
 	})
 }
 
-api.parents = function(opts) {
+api.parents = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
 		var dir = private.decode(opts.target);
 		var tree;
-		api.init()
+		private.init()
 			.then(function(results) {
 				tree = results;
 				var read = function(t) {
@@ -227,7 +274,7 @@ api.parents = function(opts) {
 							tree: tree
 						});
 					} else {
-						api.readdir(folder)
+						private.readdir(folder)
 							.then(function(files) {
 								var tasks = [];
 								_.each(files, function(file) {
@@ -251,7 +298,7 @@ api.parents = function(opts) {
 	})
 }
 
-api.paste = function(opts) {
+api.paste = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var tasks = [];
 		var dest = private.decode(opts.dst);
@@ -299,7 +346,7 @@ api.paste = function(opts) {
 	})
 }
 
-api.rename = function(opts) {
+api.rename = function(opts, res) {
 	if (!opts.target) return promise.reject('errCmdParams');
 	var dir = private.decode(opts.target);
 	var dirname = path.dirname(dir.absolutePath);
@@ -309,7 +356,7 @@ api.rename = function(opts) {
 	})
 }
 
-api.resize = function(opts) {
+api.resize = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var target = private.decode(opts.target);
 		Jimp.read(target.absolutePath)
@@ -340,7 +387,7 @@ api.resize = function(opts) {
 	})
 }
 
-api.rm = function(opts) {
+api.rm = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var removed = [];
 		_.each(opts.targets, function(hash) {
@@ -360,13 +407,13 @@ api.rm = function(opts) {
 }
 
 //not impletemented
-api.size = function(opts) {
+api.size = function(opts, res) {
 	return promise.resolve({
 		size: 'unkown'
 	});
 }
 
-api.search = function(opts) {
+api.search = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.q || opts.q.length < 1) reject({
 			message: 'errCmdParams'
@@ -395,7 +442,7 @@ api.search = function(opts) {
 	})
 }
 
-api.tmb = function(opts) {
+api.tmb = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var files = [];
 		if (opts.current) {
@@ -441,11 +488,11 @@ api.tmb = function(opts) {
 	})
 }
 
-api.tree = function(opts) {
+api.tree = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
 		var dir = private.decode(opts.target);
-		api.readdir(dir.absolutePath)
+		private.readdir(dir.absolutePath)
 			.then(function(files) {
 				var tasks = [];
 				_.each(files, function(file) {
@@ -466,7 +513,7 @@ api.tree = function(opts) {
 	})
 }
 
-api.upload = function(opts, files) {
+api.upload = function(opts, res, files) {
 	return new promise(function(resolve, reject) {
 		var target = private.decode(opts.target);
 
@@ -481,7 +528,7 @@ api.upload = function(opts, files) {
 				_saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
 			}
 			if (opts.renames && opts.renames.indexOf(_file.originalname)) {
-				_filename = api.suffix(_file.originalname, opts.suffix);
+				_filename = private.suffix(_file.originalname, opts.suffix);
 			}
 			_saveto = path.join(_saveto, _filename);
 			tasks.push(api.move({
@@ -507,7 +554,7 @@ api.upload = function(opts, files) {
 	})
 }
 
-api.zipdl = function(opts) {
+api.zipdl = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.targets || !opts.targets[0]) return reject({
 			message: 'errCmdParams'
@@ -520,7 +567,7 @@ api.zipdl = function(opts) {
 			var dir = path.dirname(first.absolutePath);
 			var name = path.basename(dir);
 			var file = path.join(dir, name + '.zip');
-			api.compress(opts.targets, file)
+			private.compress(opts.targets, file)
 				.then(function() {
 					resolve({
 						zipdl: {
@@ -539,27 +586,8 @@ api.zipdl = function(opts) {
 
 
 
-
-api.init = function() {
-	var tasks = [];
-	_.each(config.volumes, function(volume) {
-		tasks.push(private.info(volume));
-	})
-
-	return promise.all(tasks)
-		.then(function(results) {
-			_.each(results, function(result) {
-				result.phash = '';
-			})
-			return promise.resolve(results);
-		})
-}
-
-
-
-
 //private
-api.compress = function(files, dest) {
+private.compress = function(files, dest) {
 	return new promise(function(resolve, reject) {
 		var output = fs.createWriteStream(dest);
 		var archive = archiver('zip', {
@@ -590,116 +618,6 @@ api.compress = function(files, dest) {
 		archive.finalize();
 	})
 }
-api.suffix = function(name, suff) {
-	var ext = path.extname(name);
-	var fil = path.basename(name, ext);
-	return fil + suff + ext;
-}
-api.copy = function(opts) {
-	return new promise(function(resolve, reject) {
-		if (fs.existsSync(opts.dst)) {
-			return reject('Destination exists');
-		}
-		fsextra.copy(opts.src, opts.dst, function(err) {
-			if (err) return reject(err);
-			private.info(opts.dst)
-				.then(function(info) {
-					resolve({
-						added: [info],
-						changed: [m.encode(path.dirname(opts.dst))]
-					});
-				})
-				.catch(function(err) {
-					reject(err);
-				})
-		})
-	})
-}
-api.move = function(opts) {
-	return new promise(function(resolve, reject) {
-		if (fs.existsSync(opts.dst)) {
-			return reject('Destination exists');
-		}
-		fsextra.move(opts.src, opts.dst, function(err) {
-			if (err) return reject(err);
-			private.info(opts.dst)
-				.then(function(info) {
-					resolve({
-						added: [info],
-						removed: opts.upload ? [] : [m.encode(opts.src)]
-					});
-				})
-				.catch(function(err) {
-					reject(err);
-				})
-		})
-	})
-}
-/**
- * dir: absolute path
- */
-api.readdir = function(dir) {
-	return new promise(function(resolve, reject) {
-		var current;
-		fs.readdir(dir, function(err, items) {
-			if (err) return reject(err);
-			var files = [];
-			_.each(items, function(item) {
-				var info = fs.lstatSync(path.join(dir, item));
-				files.push({
-					name: item,
-					isdir: info.isDirectory()
-				});
-			})
-			resolve(files);
-		})
-	})
-}
-
-
-private.parse = function(p) {
-	var v = private.volume(p);
-	var root = config.volumes[v] || "";
-	var relative = p.substr(root.length, p.length - root.length);
-	if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
-	return {
-		volume: v,
-		dir: root,
-		path: relative,
-		isRoot: relative == path.sep
-	}
-}
-private.tmbfile = function(filename) {
-	return path.join(config.tmbroot, filename);
-}
-private.filepath = function(volume, filename) {
-	if (volume < 0 || volume > 2) return null;
-	return path.join(config.volumes[volume], path.normalize(filename));
-}
-
-
-
-
-private.volume = function(p) {
-	for (var i = 0; i < config.volumes.length; i++) {
-		if (i > 9) return -1;
-		if (p.indexOf(config.volumes[i]) == 0) {
-			return i;
-		}
-	}
-	return -1;
-}
-private.encode = function(dir) {
-	var info = private.parse(dir);
-	relative = lz.compress(info.path, {
-			outputEncoding: "Base64"
-		})
-		.replace(/=+$/g, '')
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=/g, '.');
-	return 'v' + info.volume + '_' + relative;
-}
 private.decode = function(dir) {
 	var root, code, name, volume;
 	if (!dir || dir.length < 4) throw Error('Invalid Path');
@@ -723,6 +641,24 @@ private.decode = function(dir) {
 		name: name,
 		absolutePath: path.join(root, relative)
 	}
+}
+
+//Used by private.info, api.opne, api.tmb, api.zipdl
+private.encode = function(dir) {
+	var info = private.parse(dir);
+	relative = lz.compress(info.path, {
+			outputEncoding: "Base64"
+		})
+		.replace(/=+$/g, '')
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=/g, '.');
+	return 'v' + info.volume + '_' + relative;
+}
+
+private.filepath = function(volume, filename) {
+	if (volume < 0 || volume > 2) return null;
+	return path.join(config.volumes[volume], path.normalize(filename));
 }
 
 private.info = function(p) {
@@ -794,9 +730,81 @@ private.info = function(p) {
 	})
 }
 
+private.init = function() {
+	var tasks = [];
+	_.each(config.volumes, function(volume) {
+		tasks.push(private.info(volume));
+	})
+
+	return promise.all(tasks)
+		.then(function(results) {
+			_.each(results, function(result) {
+				result.phash = '';
+			})
+			return promise.resolve(results);
+		})
+}
+
+//Used by private.encode & private.info
+private.parse = function(p) {
+	var v = private.volume(p);
+	var root = config.volumes[v] || "";
+	var relative = p.substr(root.length, p.length - root.length);
+	if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
+	return {
+		volume: v,
+		dir: root,
+		path: relative,
+		isRoot: relative == path.sep
+	}
+}
+
+/**
+ * dir: absolute path
+ */
+private.readdir = function(dir) {
+	return new promise(function(resolve, reject) {
+		var current;
+		fs.readdir(dir, function(err, items) {
+			if (err) return reject(err);
+			var files = [];
+			_.each(items, function(item) {
+				var info = fs.lstatSync(path.join(dir, item));
+				files.push({
+					name: item,
+					isdir: info.isDirectory()
+				});
+			})
+			resolve(files);
+		})
+	})
+}
+
+private.suffix = function(name, suff) {
+	var ext = path.extname(name);
+	var fil = path.basename(name, ext);
+	return fil + suff + ext;
+}
+
+private.tmbfile = function(filename) {
+	return path.join(config.tmbroot, filename);
+}
+
+//Used by private.parse & config.acl
+private.volume = function(p) {
+	for (var i = 0; i < config.volumes.length; i++) {
+		if (i > 9) return -1;
+		if (p.indexOf(config.volumes[i]) == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+
 module.exports = function( options ){
 	Object.assign(config, options);
 };
-module.exports.api = m;
+module.exports.api = api;
 
 

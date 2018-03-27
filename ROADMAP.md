@@ -1,21 +1,34 @@
-- Separate the existing codebase into the following
-	- Adapter: elFinder 
-	- LocalFileStorage Driver: elFinder.LocalFileStorage
-	- utilities: elFinder.utils
+# Roadmap
 
-- Create a standard interface for plugin and external drivers
-	- standardise configuration
-	- standardise plugin init
+## v0.2
+-[x] Separate the existing codebase into the following
+	-[x] Adapter: elFinder 
+	-[x] LocalFileStorage Driver: elFinder.LocalFileStorage
+	-[x] utilities: elFinder.utils
+-[x] Create a standard interface for volume drivers
+-[x] Remove user from LocalFileStorage
 
-- Utils
-	- volume
-	- parse
-	- encode
-	- decode: { volume, path, name }
-- Modify adapter to call each driver for each volume
-	returns information which will be used by the client to display it as a drive
+## v.0.3
+-[x] Utils implementation
+	-[x] volume
+	-[x] encode
+	-[x] decode: { volume, path, name }
+-[x] Pass `res` object to driver functions
+-[] Refactor LFS to use utils when they replace private functions
+-[] Refactor private.parse to use utils || remove it from code
+-[] Remove dependency of LFS on private.volume
+-[] Remove adapter's dependency on LFS
 
-- Remove user from LocalFileStorage
-- Pass `res` object to driver functions
-- Move `file` implementation from adapter to driver
-- Move thumb implementation to driver []
+## v0.4
+-[] Remove `file` access dependency from the connector (to be done in LFS)
+-[] Pass router in adapter to driver to allow custom routes
+-[] Move thumb access to driver
+
+## v0.5
+-[] Change configuration structure to eFinder [connector configuration ](https://github.com/Studio-42/elFinder/wiki/Connector-configuration-options)
+
+## v0.6
+-[] Create interface for plugin implementation
+-[] Document API for others to implement volume drivers
+-[] Create code sample to be used for implementing volume drivers
+

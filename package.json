@@ -1,7 +1,7 @@
 {
   "name": "elfinder-node",
-  "version": "0.2.0",
-  "description": "Elfinder adaptor for NodeJS",
+  "version": "0.3.2",
+  "description": "Elfinder adapter for NodeJS",
   "main": "elfinder.js",
   "author": "d.kyeremeh@dekyfin.com",
   "license": "MIT",

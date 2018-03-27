@@ -2,15 +2,6 @@ var lz = require('lzutf8'),
 	path = require('path');
 const utils ={};
 
-//decode a path into similar output as .decode (will be removed in future)
-utils.parse = function(volume, p) {
-	var relative = p;
-	return {
-		volume: volume,
-		path: relative,
-		isRoot: relative == path.sep
-	}
-}
 
 //Encode a given directory for client
 utils.encode = function( volume, p ) {
