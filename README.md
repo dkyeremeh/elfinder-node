@@ -53,6 +53,9 @@ Most of the elFinder function are working with the exception of these:
 - extract   extract archive
 - size
 
+## Contributing
+There is more work to be done to make this package complete. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done
+
 
 ## Credits
 Most of the work was done by [@quantv](https://github.com/quantv)
