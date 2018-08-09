@@ -1,3 +1,5 @@
+"use strict";
+
 var lz = require('lzutf8'),	//Remove after decoupling
 	path = require('path'), //Remove
 	mime = require('mime-types'),
@@ -8,14 +10,13 @@ var lz = require('lzutf8'),	//Remove after decoupling
 	archiver = require('archiver'),
 	fs = require('fs');
 
-elFinder = require("./elfinder");
+const elFinder = require("./elfinder");
 
 var api = {},
-	private = {};
+	local = {};
 
 var config = {
 	disabled: ['chmod', 'mkfile', 'zipdl', 'edit', 'put', 'size'],
-	volumeicons: ['elfinder-navbar-root-local'],
 	permissions: {
 		read: 1,
 		write: 1,
@@ -27,10 +28,10 @@ var config = {
 
 api.archive = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
-		private.compress(opts.targets, path.join(target.absolutePath, opts.name))
+		var target = local.decode(opts.target);
+		local.compress(opts.targets, path.join(target.absolutePath, opts.name))
 			.then(function() {
-				return private.info(path.join(target.absolutePath, opts.name));
+				return local.info(path.join(target.absolutePath, opts.name));
 			})
 			.then(function(info) {
 				resolve({
@@ -45,7 +46,7 @@ api.archive = function(opts, res) {
 
 api.dim = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 		Jimp.read(target.absolutePath)
 			.then(function(img) {
 				resolve({
@@ -62,11 +63,11 @@ api.copy = function(opts, res) {
 		}
 		fsextra.copy(opts.src, opts.dst, function(err) {
 			if (err) return reject(err);
-			private.info(opts.dst)
+			local.info(opts.dst)
 				.then(function(info) {
 					resolve({
 						added: [info],
-						changed: [m.encode(path.dirname(opts.dst))]
+						changed: [local.encode(path.dirname(opts.dst))]
 					});
 				})
 				.catch(function(err) {
@@ -80,7 +81,7 @@ api.duplicate = function(opt) {
 	return new promise(function(resolve, reject) {
 		var tasks = [];
 		_.each(opt.targets, function(target) {
-			var _t = private.decode(target);
+			var _t = local.decode(target);
 			var ext = path.extname(_t.name);
 			var fil = path.basename(_t.name, ext);
 			var name = fil + '(copy)' + ext;
@@ -108,14 +109,14 @@ api.duplicate = function(opt) {
 
 api.file = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 		res.sendFile(target.absolutePath);
 	})
 }
 
 api.get = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 		fs.readFile(target.absolutePath, 'utf8', function(err, data) {
 			if (err) return reject(err);
 			resolve({
@@ -133,8 +134,8 @@ api.info = function(opts, res){
 api.ls = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
-		var info = private.decode(opts.target);
-		private.readdir(info.absolutePath)
+		var info = local.decode(opts.target);
+		local.readdir(info.absolutePath)
 			.then(function(files) {
 				var _files = files.map(function(e) {
 					return e.name
@@ -152,7 +153,7 @@ api.ls = function(opts, res) {
 //TODO check permission.
 api.mkdir = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var dir = private.decode(opts.target);
+		var dir = local.decode(opts.target);
 		var tasks = [];
 		var dirs = opts.dirs || [];
 		if (opts.name) {
@@ -162,7 +163,7 @@ api.mkdir = function(opts, res) {
 			var _dir = path.join(dir.absolutePath, name);
 			if (!fs.existsSync(_dir)) {
 				fs.mkdirSync(_dir);
-				tasks.push(private.info(_dir));
+				tasks.push(local.info(_dir));
 			}
 		})
 		promise.all(tasks)
@@ -181,11 +182,11 @@ api.move = function(opts, res) {
 		}
 		fsextra.move(opts.src, opts.dst, function(err) {
 			if (err) return reject(err);
-			private.info(opts.dst)
+			local.info(opts.dst)
 				.then(function(info) {
 					resolve({
 						added: [info],
-						removed: opts.upload ? [] : [m.encode(opts.src)]
+						removed: opts.upload ? [] : [local.encode(opts.src)]
 					});
 				})
 				.catch(function(err) {
@@ -200,7 +201,7 @@ api.open = function(opts, res) {
 		var data = {};
 		data.options = {
 			uiCmdMap: [],
-			tmbUrl: path.join(config.URL, '.tmb/', )
+			tmbUrl: path.join(config.URL, '.tmb/' )
 		}
 		var _init = opts.init && opts.init == true;
 		var _target = opts.target;
@@ -209,16 +210,16 @@ api.open = function(opts, res) {
 			if (config.init) config.init();
 			data.api = "2.1";
 			if (!_target) {
-				_target = private.encode(config.path + path.sep);
+				_target = local.encode(config.path + path.sep);
 			}
 		}
 		if (!_target) {
 			return reject('errCmdParams');
 		}
 		//NOTE target must always be directory
-		_target = private.decode(_target);
+		_target = local.decode(_target);
 
-		private.info(_target.absolutePath)
+		local.info(_target.absolutePath)
 			.then(function(result) {
 				data.cwd = result;
 				var files;
@@ -231,14 +232,14 @@ api.open = function(opts, res) {
 				}
 				var tasks = [];
 				_.each(files, function(file) {
-					tasks.push(private.info(path.join(_target.absolutePath, file)));
+					tasks.push(local.info(path.join(_target.absolutePath, file)));
 				})
 				return promise.all(tasks);
 			})
 			.then(function(files) {
 				data.files = files;
 				if (_init) {
-					return private.init();
+					return local.init();
 				} else {
 					return promise.resolve(null);
 				}
@@ -257,9 +258,9 @@ api.open = function(opts, res) {
 api.parents = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
-		var dir = private.decode(opts.target);
+		var dir = local.decode(opts.target);
 		var tree;
-		private.init()
+		local.init()
 			.then(function(results) {
 				tree = results;
 				var read = function(t) {
@@ -270,12 +271,12 @@ api.parents = function(opts, res) {
 							tree: tree
 						});
 					} else {
-						private.readdir(folder)
+						local.readdir(folder)
 							.then(function(files) {
 								var tasks = [];
 								_.each(files, function(file) {
 									if (file.isdir) {
-										tasks.push(private.info(path.join(folder, file.name)));
+										tasks.push(local.info(path.join(folder, file.name)));
 									}
 								})
 								promise.all(tasks)
@@ -297,9 +298,9 @@ api.parents = function(opts, res) {
 api.paste = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var tasks = [];
-		var dest = private.decode(opts.dst);
+		var dest = local.decode(opts.dst);
 		_.each(opts.targets, function(target) {
-			var info = private.decode(target);
+			var info = local.decode(target);
 			var name = info.name;
 			if (opts.renames && opts.renames.indexOf(info.name) >= 0) {
 				var ext = path.extname(name);
@@ -344,7 +345,7 @@ api.paste = function(opts, res) {
 
 api.rename = function(opts, res) {
 	if (!opts.target) return promise.reject('errCmdParams');
-	var dir = private.decode(opts.target);
+	var dir = local.decode(opts.target);
 	var dirname = path.dirname(dir.absolutePath);
 	return api.move({
 		src: dir.absolutePath,
@@ -354,7 +355,7 @@ api.rename = function(opts, res) {
 
 api.resize = function(opts, res) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 		Jimp.read(target.absolutePath)
 			.then(function(image) {
 				if (opts.mode == 'resize') {
@@ -369,7 +370,7 @@ api.resize = function(opts, res) {
 				}
 				image.quality(parseInt(opts.quality))
 					.write(target.absolutePath);
-				return private.info(target.absolutePath);
+				return local.info(target.absolutePath);
 			})
 			.then(function(info) {
 				info.tmb = 1;
@@ -387,7 +388,7 @@ api.rm = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var removed = [];
 		_.each(opts.targets, function(hash) {
-			var target = private.decode(hash);
+			var target = local.decode(hash);
 			try {
 				fsextra.removeSync(target.absolutePath);
 				removed.push(hash);
@@ -414,14 +415,14 @@ api.search = function(opts, res) {
 		if (!opts.q || opts.q.length < 1) reject({
 			message: 'errCmdParams'
 		});
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 		var tasks = [];
 
 		fsextra.walk(target.absolutePath)
 			.on('data', function(item) {
 				var name = path.basename(item.path);
 				if (name.indexOf(opts.q) >= 0) {
-					tasks.push(private.info(item.path));
+					tasks.push(local.info(item.path));
 				}
 			})
 			.on('end', function() {
@@ -442,7 +443,7 @@ api.tmb = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		var files = [];
 		if (opts.current) {
-			var dir = private.decode(opts.current);
+			var dir = local.decode(opts.current);
 			var items = fs.readdirSync(dir.absolutePath);
 			_.each(items, function(item) {
 				var _m = mime.lookup(item);
@@ -452,7 +453,7 @@ api.tmb = function(opts, res) {
 			})
 		} else if (opts.targets) {
 			_.each(opts.targets, function(target) {
-				var _t = private.decode(target);
+				var _t = local.decode(target);
 				files.push(_t.absolutePath);
 			})
 		}
@@ -461,7 +462,7 @@ api.tmb = function(opts, res) {
 		_.each(files, function(file) {
 			tasks.push(Jimp.read(file)
 				.then(function(img) {
-					var op = private.encode(file);
+					var op = local.encode(file);
 					img.resize(48, 48)
 						.write(path.join(config.tmbroot, op + ".png"));
 					return promise.resolve(op);
@@ -487,13 +488,13 @@ api.tmb = function(opts, res) {
 api.tree = function(opts, res) {
 	return new promise(function(resolve, reject) {
 		if (!opts.target) return reject('errCmdParams');
-		var dir = private.decode(opts.target);
-		private.readdir(dir.absolutePath)
+		var dir = local.decode(opts.target);
+		local.readdir(dir.absolutePath)
 			.then(function(files) {
 				var tasks = [];
 				_.each(files, function(file) {
 					if (file.isdir) {
-						tasks.push(private.info(path.join(dir.absolutePath, file.name)));
+						tasks.push(local.info(path.join(dir.absolutePath, file.name)));
 					}
 				})
 				return promise.all(tasks);
@@ -511,7 +512,7 @@ api.tree = function(opts, res) {
 
 api.upload = function(opts, res, files) {
 	return new promise(function(resolve, reject) {
-		var target = private.decode(opts.target);
+		var target = local.decode(opts.target);
 
 		var tasks = [];
 		for (var i = 0; i < files.length; i++) {
@@ -524,7 +525,7 @@ api.upload = function(opts, res, files) {
 				_saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
 			}
 			if (opts.renames && opts.renames.indexOf(_file.originalname)) {
-				_filename = private.suffix(_file.originalname, opts.suffix);
+				_filename = local.suffix(_file.originalname, opts.suffix);
 			}
 			_saveto = path.join(_saveto, _filename);
 			tasks.push(api.move({
@@ -559,15 +560,15 @@ api.zipdl = function(opts, res) {
 
 		} else {
 			var first = opts.targets[0];
-			first = private.decode(first);
+			first = local.decode(first);
 			var dir = path.dirname(first.absolutePath);
 			var name = path.basename(dir);
 			var file = path.join(dir, name + '.zip');
-			private.compress(opts.targets, file)
+			local.compress(opts.targets, file)
 				.then(function() {
 					resolve({
 						zipdl: {
-							file: private.encode(file),
+							file: local.encode(file),
 							name: name + '.zip',
 							mime: 'application/zip'
 						}
@@ -582,8 +583,8 @@ api.zipdl = function(opts, res) {
 
 
 
-//private
-private.compress = function(files, dest) {
+//local
+local.compress = function(files, dest) {
 	return new promise(function(resolve, reject) {
 		var output = fs.createWriteStream(dest);
 		var archive = archiver('zip', {
@@ -599,7 +600,7 @@ private.compress = function(files, dest) {
 		});
 		archive.pipe(output);
 		_.each(files, function(file) {
-			var target = private.decode(file);
+			var target = local.decode(file);
 			//check if target is file or dir
 			if (fs.lstatSync(target.absolutePath)
 				.isDirectory()) {
@@ -614,7 +615,7 @@ private.compress = function(files, dest) {
 		archive.finalize();
 	})
 }
-private.decode = function(dir) {
+local.decode = function(dir) {
 	var root, code, name, volume;
 	if (!dir || dir.length < 4) throw Error('Invalid Path');
 	if (dir[0] != 'v' || dir[2] != '_') throw Error('Invalid Path');
@@ -639,9 +640,9 @@ private.decode = function(dir) {
 	}
 }
 
-//Used by private.info, api.opne, api.tmb, api.zipdl
-private.encode = function(dir) {
-	var info = private.parse(dir);
+//Used by local.info, api.opne, api.tmb, api.zipdl
+local.encode = function(dir) {
+	var info = local.parse(dir),
 	relative = lz.compress(info.path, {
 			outputEncoding: "Base64"
 		})
@@ -652,13 +653,13 @@ private.encode = function(dir) {
 	return 'v' + info.volume + '_' + relative;
 }
 
-private.filepath = function(volume, filename) {
+local.filepath = function(volume, filename) {
 	return path.join(config.path, path.normalize(filename));
 }
 
-private.info = function(p) {
+local.info = function(p) {
 	return new promise(function(resolve, reject) {
-		var info = private.parse(p);
+		var info = local.parse(p);
 		if (info.volume < 0) return reject('Volume not found');
 
 		fs.stat(p, function(err, stat) {
@@ -666,7 +667,7 @@ private.info = function(p) {
 			var r = {
 				name: path.basename(p),
 				size: stat.size,
-				hash: private.encode(p),
+				hash: local.encode(p),
 				mime: stat.isDirectory() ? 'directory' : mime.lookup(p),
 				ts: Math.floor(stat.mtime.getTime() / 1000),
 				volumeid: 'v' + info.volume + '_'
@@ -675,7 +676,7 @@ private.info = function(p) {
 				r.mime = 'application/binary';
 			}
 			if (r.mime.indexOf('image/') == 0) {
-				var filename = private.encode(p);
+				var filename = local.encode(p);
 				var tmbPath = path.join(config.tmbroot, filename + ".png");
 				if (fs.existsSync(tmbPath)) {
 					r.tmb = filename + '.png';
@@ -687,7 +688,7 @@ private.info = function(p) {
 			if (!info.isRoot) {
                 var parent = path.dirname(p);
                 // if (parent == root) parent = parent + path.sep;
-				r.phash = private.encode(parent);
+				r.phash = local.encode(parent);
 			} else {
 				r.options = {
 					disabled: config.disabled,
@@ -699,9 +700,7 @@ private.info = function(p) {
 					},
 					url: config.URL
 				}
-				if (config.volumeicons[info.volume]) {
-					r.options.csscls = config.volumeicons[info.volume];
-				}
+				r.options.csscls = 'elfinder-navbar-root-local';
 			}
 			var acl = config.permissions;
 			r.read = acl.read;
@@ -725,13 +724,13 @@ private.info = function(p) {
 	})
 }
 
-private.init = function( volume ) {
-	var tasks = [ private.info( config.path ) ];
+local.init = function( volume ) {
+	var tasks = [ local.info( config.path ) ];
 
 	/* PREVIOUSLY
 	var tasks = [];
 	_.each(config.volumes, function(volume) {
-		tasks.push(private.info(volume));
+		tasks.push(local.info(volume));
 	})
 	*/
 
@@ -744,11 +743,11 @@ private.init = function( volume ) {
 		})
 }
 
-//Used by private.encode & private.info
-private.parse = function(p) {
+//Used by local.encode & local.info
+local.parse = function(p) {
 	var root = config.path || "";
 	var relative = p.substr(root.length, p.length - root.length);
-	if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
+	if ( relative.indexOf(path.sep) != 0) relative = path.sep + relative;
 	return {
 		volume: config.volume,
 		dir: root,
@@ -760,7 +759,7 @@ private.parse = function(p) {
 /**
  * dir: absolute path
  */
-private.readdir = function(dir) {
+local.readdir = function(dir) {
 	return new promise(function(resolve, reject) {
 		var current;
 		fs.readdir(dir, function(err, items) {
@@ -778,13 +777,13 @@ private.readdir = function(dir) {
 	})
 }
 
-private.suffix = function(name, suff) {
+local.suffix = function(name, suff) {
 	var ext = path.extname(name);
 	var fil = path.basename(name, ext);
 	return fil + suff + ext;
 }
 
-private.tmbfile = function(filename) {
+local.tmbfile = function(filename) {
 	return path.join(config.tmbroot, filename);
 }
 

@@ -1,3 +1,5 @@
+"use strict";
+
 var lz = require('lzutf8'),
 	path = require('path');
 const utils ={};
@@ -5,7 +7,7 @@ const utils ={};
 
 //Encode a given directory for client
 utils.encode = function( volume, p ) {
-	relative = lz.compress(p, {
+	var relative = lz.compress(p, {
 			outputEncoding: "Base64"
 		})
 		.replace(/=+$/g, '')

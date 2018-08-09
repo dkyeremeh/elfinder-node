@@ -1,7 +1,9 @@
+"use strict";
+
 var express = require('express');
 var router = express.Router();
 var LFS = require('./LocalFileStorage'),
-	utils = require("./utils");
+	utils = require("./utils"),
 	path = require('path'),
 	multer = require('multer');
 	
@@ -32,7 +34,7 @@ module.exports = function( roots ){
 
 		//Detect targeted volume
 		var target = req.query.target || req.body && req.body.target	//When target is specified in request
-			|| req.query.targets && req.query.targets[0] || req.body.targets && req.body.targets //When targets is specified instead
+			|| ( req.query.targets && req.query.targets[0] ) || req.body.targets && req.body.targets //When targets is specified instead
 			|| utils.encode( 0, path.sep );	//When none are specified
 		
 		var volume = utils.decode( target ).volume;
@@ -52,7 +54,7 @@ module.exports = function( roots ){
 	});
 
 	router.get('/', function (req, res, next) {
-		var cmd = req.query.cmd
+		var cmd = req.query.cmd;
 		if (cmd && driver.api[cmd]) {
 			driver.api[cmd]( req.query, res)
 			.then(function (result){
