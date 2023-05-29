@@ -3,3 +3,6 @@ sample/
 package-lock.json
 
 /media
+
+.DS_Store
+*.log
