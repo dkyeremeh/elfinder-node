@@ -12,9 +12,10 @@ const api = {};
 
 const config = {
   router: '/connector',
-  disabled: ['mkfile', 'edit', 'put', 'size'],
+  disabled: ['edit', 'put', 'size'],
   volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local'],
 };
+
 config.acl = function (path) {
   const volume = helpers.volume(path);
   return (
@@ -35,8 +36,6 @@ api.archive = async function (opts, res) {
     added: [await helpers.info(filePath)],
   };
 };
-
-api.chmod = async function (opts) {};
 
 api.dim = async function (opts, res) {
   const target = helpers.decode(opts.target);
@@ -112,8 +111,19 @@ api.mkdir = async function (opts, res) {
   return { added };
 };
 
+api.mkfile = async function (opts, res) {
+  const dir = helpers.decode(opts.target);
+  const name = opts.name;
+  const filePath = dir.absolutePath + path.sep + name;
+
+  await fs.writeFile(filePath, '');
+  return { added: [await helpers.info(filePath)] };
+};
+
 api.open = async function (opts, res) {
   let volumes;
+  let target = opts.target;
+  const init = opts.init == true;
   const encodedRoot = helpers.encode(config.volumes[0] + path.sep);
   const data = {
     options: {
@@ -121,9 +131,6 @@ api.open = async function (opts, res) {
       tmbUrl: path.join(config.roots[0].URL, '.tmb/'),
     },
   };
-
-  const init = opts.init == true;
-  let target = opts.target;
 
   if (init) {
     config.init?.();
@@ -133,10 +140,8 @@ api.open = async function (opts, res) {
 
   //NOTE target must always be directory
   target = helpers.decode(target);
-
-  if (!(await fs.exists(target.absolutePath))) {
-    target = helpers.decode(encodedRoot);
-  }
+  const dirExists = await fs.exists(target.absolutePath);
+  if (!dirExists) target = helpers.decode(encodedRoot);
 
   let files = (await fs.readdir(target.absolutePath).catch(console.log)) || [];
   const tasks = files.map(async (file) =>
@@ -223,11 +228,10 @@ api.paste = async function (opts, res) {
 
   results.forEach((r) => {
     rtn.added.push(r.added[0]);
-    if (r.removed[0]) {
+    if (r.removed?.length) {
       rtn.removed.push(r.removed[0]);
     }
-    console.log('changed', r.changed);
-    if (r.changed?.length && rtn.changed.indexOfa(r.changed[0]) < 0) {
+    if (r.changed?.length && rtn.changed.indexOf(r.changed[0]) < 0) {
       rtn.changed.push(r.changed[0]);
     }
   });

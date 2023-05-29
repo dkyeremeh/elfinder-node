@@ -41,6 +41,25 @@ test('api.archive', async (t) => {
   t.truthy(archive?.hash);
 });
 
+test('api.chmod', async (t) => {
+  await fs.writeFile(dir + '/a.text', 'test file');
+
+  const { body } = await request
+    .get(
+      url({
+        cmd: 'archive',
+        name: 'Archive.zip',
+        target: encodePath('/'),
+        targets: [encodePath('/a.text')],
+      })
+    )
+    .expect(200);
+
+  const archive = body.added?.[0];
+  t.truthy(archive?.name);
+  t.truthy(archive?.hash);
+});
+
 test('api.open', async (t) => {
   const { body } = await request.get(url({ cmd: 'open', init: 1 })).expect(200);
 
@@ -51,7 +70,17 @@ test('api.open', async (t) => {
   t.truthy(body.options);
 });
 
-test.skip('api.paste.copy', async (t) => {
+test('api.mkfile', async (t) => {
+  const { body } = await request
+    .get(url({ cmd: 'mkfile', name: 'mkfile.txt', target: encodePath('/') }))
+    .expect(200);
+
+  //   Verify response data
+  t.is(body.added.length, 1);
+  t.truthy(body.added[0].name);
+});
+
+test('api.paste.copy', async (t) => {
   await fs.mkdirp(resolve(dir, 'dest'));
   await fs.writeFile(resolve(dir, 'pt.txt'), 'Random text');
 
