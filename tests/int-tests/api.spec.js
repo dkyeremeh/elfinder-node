@@ -80,6 +80,21 @@ test('api.mkfile', async (t) => {
   t.truthy(body.added[0].name);
 });
 
+test('api.put', async (t) => {
+  const { body } = await request
+    .post(url())
+    .send({
+      cmd: 'put',
+      content: 'mr lonics',
+      target: encodePath('/something.txt'),
+    })
+    .expect(200);
+
+  //   Verify response data
+  t.is(body.changed.length, 1);
+  t.truthy(body.changed[0].name);
+});
+
 test('api.paste.copy', async (t) => {
   await fs.mkdirp(resolve(dir, 'dest'));
   await fs.writeFile(resolve(dir, 'pt.txt'), 'Random text');
@@ -150,12 +165,13 @@ test('api.rm', async (t) => {
   t.false(await fs.exists(dir + '/rm.txt'));
 });
 
-test('api.upload', async (t) => {
+test.only('api.upload', async (t) => {
   const { body } = await request
     .post(url())
     .field('cmd', 'upload')
     .field('target', volume)
     .attach('upload[]', files.txt)
+    .attach('upload[]', files.img)
     .expect(200);
 
   // Check that file exists

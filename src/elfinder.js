@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const multer = require('multer');
 const LFS = require('./LocalFileStorage');
 const connector = LFS.api;
+
+//Configure busboy
+const busboy = require('express-busboy');
 
 module.exports = function (roots) {
   const volumes = roots.map((r) => r.path);
@@ -13,6 +15,10 @@ module.exports = function (roots) {
     roots: roots,
     tmbroot: path.join(media, '.tmb'),
     volumes: volumes,
+  });
+
+  busboy.extend(router, {
+    upload: true,
   });
 
   router.get('/', async function (req, res) {
@@ -28,14 +34,14 @@ module.exports = function (roots) {
     }
   });
 
-  const upload = multer({ dest: 'media/.tmp/' });
-
-  router.post('/', upload.array('upload[]', 10), async function (req, res) {
+  router.post('/', async function (req, res) {
     const cmd = req.body.cmd;
     if (cmd && connector[cmd]) {
-      const result = await connector[cmd](req.body, res, req.files).catch((e) =>
-        res.status(500).json({ error: e.message })
-      );
+      const result = await connector[cmd](
+        req.body,
+        res,
+        req.files?.['upload[]']
+      ).catch((e) => res.status(500).json({ error: e.message }));
 
       res.json(result);
     } else {

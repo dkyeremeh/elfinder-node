@@ -12,7 +12,7 @@ const api = {};
 
 const config = {
   router: '/connector',
-  disabled: ['edit', 'put', 'size'],
+  disabled: ['size'],
   volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local'],
 };
 
@@ -239,6 +239,15 @@ api.paste = async function (opts, res) {
   return rtn;
 };
 
+api.put = async function (opts, res) {
+  const target = helpers.decode(opts.target);
+  const { content, encoding = 'UTF-8' } = opts;
+
+  await fs.writeFile(target.absolutePath, content);
+  const info = await helpers.info(target.absolutePath);
+  return { changed: [info] };
+};
+
 api.rename = function (opts, res) {
   if (!opts.target) return promise.reject('errCmdParams');
   const dir = helpers.decode(opts.target);
@@ -396,34 +405,32 @@ api.tree = async function (opts, res) {
   return { tree };
 };
 
-api.upload = async function (opts, res, files) {
+api.upload = async function (opts, res, _files) {
   const target = helpers.decode(opts.target);
+  const files = _files instanceof Array ? _files : [_files];
 
-  const tasks = [];
-  for (let i = 0; i < files.length; i++) {
-    const _file = files[i];
-    //const _dest = opts.upload_path[i];
-    const _source = path.resolve(_file.path);
-    let _filename = _file.originalname;
-    let _saveto = target.absolutePath;
+  const tasks = files.map(async (file, i) => {
+    let filename = file.filename;
+    let dst = target.absolutePath;
     if (opts.upload_path) {
-      _saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
+      dst = path.join(dst, path.dirname(opts.upload_path[i]));
     }
-    if (opts.renames?.indexOf(_file.originalname)) {
-      _filename = helpers.suffix(_file.originalname, opts.suffix);
+
+    if (opts.renames?.indexOf(file.filename)) {
+      filename = helpers.suffix(file.filename, opts.suffix);
     }
-    _saveto = path.join(_saveto, _filename);
-    tasks.push(
-      helpers.move({
-        src: _source,
-        dst: _saveto,
-        upload: true,
-      })
-    );
-  }
+    dst = path.join(dst, filename);
+
+    return helpers.move({
+      dst,
+      src: file.file,
+      upload: true,
+    });
+  });
 
   const info = await Promise.all(tasks);
   const added = info.map((i) => i.added[0]);
+  console.log({ added });
 
   return { added };
 };
