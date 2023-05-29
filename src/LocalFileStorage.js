@@ -12,7 +12,7 @@ const api = {};
 
 const config = {
   router: '/connector',
-  disabled: ['size'],
+  disabled: ['chmod', 'extract', 'size'],
   volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local'],
 };
 

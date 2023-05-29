@@ -54,8 +54,6 @@ The connector takes an array of volumes. All volumes are local files and must be
 Most of the elFinder function are working with the exception of these:
 
 - chmod: change file permission
-- mkfile: create text files
-- put: save edited text
 - extract extract archive
 - size
 
