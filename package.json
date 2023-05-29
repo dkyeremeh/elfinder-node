@@ -17,7 +17,9 @@
     "underscore": "^1.8.3"
   },
   "devDependencies": {
-    "eslint": "^8.41.0"
+    "eslint": "^8.41.0",
+    "supertest": "^6.3.3",
+    "tape": "^5.6.3"
   },
   "scripts": {
     "lint": "eslint ."
