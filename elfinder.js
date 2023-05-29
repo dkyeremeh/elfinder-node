@@ -4,7 +4,6 @@ const path = require('path');
 const multer = require('multer');
 const LFS = require('./LocalFileStorage');
 const connector = LFS.api;
-const utils = require('./utils');
 
 module.exports = function (roots) {
   const volumes = roots.map((r) => r.path);
@@ -62,4 +61,3 @@ module.exports = function (roots) {
 };
 
 module.exports.LocalFileStorage = LFS;
-module.exports.utils = utils;
