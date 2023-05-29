@@ -22,7 +22,8 @@
     "tape": "^5.6.3"
   },
   "scripts": {
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "serve": "node tests/server.js"
   },
   "repository": {
     "type": "git",
