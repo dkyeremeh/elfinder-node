@@ -52,26 +52,6 @@
             cssAutoLoad: false, // Disable CSS auto loading
             baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/elfinder/2.1.28/', // Base URL to css/*, js/*
             url: '/connector', // connector URL (REQUIRED)
-
-            ui: ['toolbar', 'path', 'stat'],
-            uiOptions: {
-              // toolbar configuration
-              toolbar: [
-                ['up'],
-                ['undo', 'redo'],
-                ['mkdir', 'upload'],
-                ['copy', 'cut', 'paste', 'edit', 'resize'],
-                ['info', 'sort', 'fullscreen'],
-                ['search'],
-              ],
-              toolbarExtra: {
-                autoHideUA: [],
-              },
-            },
-            path: {
-              // Move to head of work zone without UI navbar
-              toWorkzoneWithoutNavbar: false,
-            },
           },
           // 2nd Arg - before boot up function
           function (fm, extraObj) {
