@@ -32,7 +32,7 @@ api.archive = async function (opts, res) {
   await helpers.compress(opts.targets, filePath);
 
   return {
-    added: [helpers.info(filePath)],
+    added: [await helpers.info(filePath)],
   };
 };
 
@@ -438,30 +438,19 @@ api.tmb = function (opts, res) {
   });
 };
 
-api.tree = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    if (!opts.target) return reject('errCmdParams');
-    const dir = helpers.decode(opts.target);
-    helpers
-      .readdir(dir.absolutePath)
-      .then(function (files) {
-        const tasks = [];
-        _.each(files, function (file) {
-          if (file.isdir) {
-            tasks.push(helpers.info(path.join(dir.absolutePath, file.name)));
-          }
-        });
-        return Promise.all(tasks);
-      })
-      .then(function (folders) {
-        resolve({
-          tree: folders,
-        });
-      })
-      .catch(function (e) {
-        reject(e);
-      });
+api.tree = async function (opts, res) {
+  if (!opts.target) throw new Error('errCmdParams');
+  const dir = helpers.decode(opts.target);
+  const files = await helpers.readdir(dir.absolutePath);
+
+  const tasks = files.map(async (file) => {
+    if (file.isdir) {
+      return helpers.info(path.join(dir.absolutePath, file.name));
+    }
   });
+
+  const tree = Promise.all(tasks);
+  return { tree };
 };
 
 api.upload = async function (opts, res, files) {
@@ -497,8 +486,7 @@ api.upload = async function (opts, res, files) {
 };
 
 api.zipdl = async function (opts, res) {
-  if (!opts.targets?.[0]) throw new Error('errCmdParams');
-  if (opts.download == 1) return;
+  if (!opts.targets?.length) throw new Error('errCmdParams');
 
   let first = opts.targets[0];
   first = helpers.decode(first);
