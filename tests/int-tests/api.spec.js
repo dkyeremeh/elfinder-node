@@ -20,7 +20,7 @@ const url = (query = {}) => {
   return `/connector?${qs.stringify(query)}`;
 };
 
-// test.afterEach(async () => await fs.emptyDir(dir));
+test.before(async () => await fs.emptyDir(dir));
 
 test('api.archive', async (t) => {
   await fs.writeFile(dir + '/a.text', 'test file');
@@ -35,8 +35,8 @@ test('api.archive', async (t) => {
       })
     )
     .expect(200);
-  const archive = body.added?.[0];
 
+  const archive = body.added?.[0];
   t.truthy(archive?.name);
   t.truthy(archive?.hash);
 });
@@ -51,43 +51,54 @@ test('api.open', async (t) => {
   t.truthy(body.options);
 });
 
-test('api.upload', async (t) => {
-  await request
-    .post(url())
-    .field('cmd', 'upload')
-    .field('target', volume)
-    .attach('upload[]', files.txt);
+test('api.rename', async (t) => {
+  await fs.writeFile(resolve(dir, 'rn.txt'), 'Random text');
 
-  // Check that file exists
-  t.true(await fs.exists(dir + '/text.txt'));
+  await request
+    .get(
+      url({
+        cmd: 'rename',
+        target: encodePath('/rn.txt'),
+        name: 'random.txt',
+      })
+    )
+    .expect(200);
+
+  t.true(await fs.exists(dir + '/random.txt'));
+  await fs.rm(dir + '/random.txt');
 });
 
 test('api.rm', async (t) => {
   // Create file befor test
-  await fs.writeFile(dir + '/text.txt', 'random file');
+  await fs.writeFile(dir + '/rm.txt', 'random file');
 
-  await request.get(
-    url({
-      cmd: 'rm',
-      'targets[]': encodePath('/text.txt'),
-    })
-  );
+  const { body } = await request
+    .get(
+      url({
+        cmd: 'rm',
+        'targets[]': encodePath('/rm.txt'),
+      })
+    )
+    .expect(200);
 
   //   Check file is deleted
-  t.false(await fs.exists(dir + '/text.txt'));
+  t.truthy(body.removed.length);
+  t.false(await fs.exists(dir + '/rm.txt'));
 });
 
-test.skip('api.rename', async (t) => {
-  await fs.writeFile(resolve(dir, 'rn.txt'), 'Random text');
+test('api.upload', async (t) => {
+  const { body } = await request
+    .post(url())
+    .field('cmd', 'upload')
+    .field('target', volume)
+    .attach('upload[]', files.txt)
+    .expect(200);
 
-  await request.get(
-    url({
-      cmd: 'rename',
-      target: encodePath('/rn.txt'),
-      name: 'random.txt',
-    })
-  );
-  t.true(await fs.exists(dir + '/random.txt'));
+  // Check that file exists
+  const added = body.added;
+  t.truthy(added.length);
+  t.truthy(added[0].name);
+  t.truthy(added[0].hash);
 
-  await fs.de;
+  t.true(await fs.exists(dir + '/text.txt'));
 });

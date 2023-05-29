@@ -334,23 +334,16 @@ api.resize = function (opts, res) {
   });
 };
 
-api.rm = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    const removed = [];
-    _.each(opts.targets, function (hash) {
-      const target = helpers.decode(hash);
-      try {
-        fs.removeSync(target.absolutePath);
-        removed.push(hash);
-      } catch (err) {
-        console.log(err);
-        reject(err);
-      }
-    });
-    resolve({
-      removed: removed,
-    });
-  });
+api.rm = async function (opts, res) {
+  const removed = [];
+
+  for (const hash of opts.targets) {
+    const target = helpers.decode(hash);
+    await fs.remove(target.absolutePath);
+    removed.push(hash);
+  }
+
+  return { removed };
 };
 
 //not impletemented
