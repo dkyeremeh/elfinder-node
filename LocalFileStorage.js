@@ -192,7 +192,8 @@ api.open = async function (opts, res) {
       })
       .then(function () {
         resolve(data);
-      });
+      })
+      .catch(reject);
   });
 };
 
@@ -463,78 +464,57 @@ api.tree = function (opts, res) {
   });
 };
 
-api.upload = function (opts, res, files) {
-  return new promise(function (resolve, reject) {
-    const target = helpers.decode(opts.target);
+api.upload = async function (opts, res, files) {
+  const target = helpers.decode(opts.target);
 
-    const tasks = [];
-    for (let i = 0; i < files.length; i++) {
-      const _file = files[i];
-      //const _dest = opts.upload_path[i];
-      const _source = path.resolve(_file.path);
-      let _filename = _file.originalname;
-      let _saveto = target.absolutePath;
-      if (opts.upload_path) {
-        _saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
-      }
-      if (opts.renames?.indexOf(_file.originalname)) {
-        _filename = helpers.suffix(_file.originalname, opts.suffix);
-      }
-      _saveto = path.join(_saveto, _filename);
-      tasks.push(
-        api.move({
-          src: _source,
-          dst: _saveto,
-          upload: true,
-        })
-      );
+  const tasks = [];
+  for (let i = 0; i < files.length; i++) {
+    const _file = files[i];
+    //const _dest = opts.upload_path[i];
+    const _source = path.resolve(_file.path);
+    let _filename = _file.originalname;
+    let _saveto = target.absolutePath;
+    if (opts.upload_path) {
+      _saveto = path.join(_saveto, path.dirname(opts.upload_path[i]));
     }
-    promise
-      .all(tasks)
-      .then(function (info) {
-        const added = [];
-        _.each(info, function (i) {
-          added.push(i.added[0]);
-        });
-        resolve({
-          added: added,
-        });
+    if (opts.renames?.indexOf(_file.originalname)) {
+      _filename = helpers.suffix(_file.originalname, opts.suffix);
+    }
+    _saveto = path.join(_saveto, _filename);
+    tasks.push(
+      api.move({
+        src: _source,
+        dst: _saveto,
+        upload: true,
       })
-      .catch(function (err) {
-        console.log(err);
-        reject(err);
-      });
-  });
+    );
+  }
+
+  const info = await Promise.all(tasks);
+  const added = info.map((i) => i.added[0]);
+
+  return { added };
 };
 
-api.zipdl = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    if (!opts.targets?.[0])
-      return reject({
-        message: 'errCmdParams',
-      });
-    if (opts?.download !== 1) {
-      let first = opts.targets[0];
-      first = helpers.decode(first);
-      const dir = path.dirname(first.absolutePath);
-      const name = path.basename(dir);
-      const file = path.join(dir, name + '.zip');
-      helpers
-        .compress(opts.targets, file)
-        .then(function () {
-          resolve({
-            zipdl: {
-              file: helpers.encode(file),
-              name: name + '.zip',
-              mime: 'application/zip',
-            },
-          });
-        })
-        .catch(function (err) {
-          reject(err);
-        });
-    }
-  });
+api.zipdl = async function (opts, res) {
+  if (!opts.targets?.[0]) throw new Error('errCmdParams');
+  if (opts.download == 1) return;
+
+  let first = opts.targets[0];
+  first = helpers.decode(first);
+  const dir = path.dirname(first.absolutePath);
+  const name = path.basename(dir);
+  const file = path.join(dir, name + '.zip');
+
+  await helpers.compress(opts.targets, file);
+
+  return {
+    zipdl: {
+      file: helpers.encode(file),
+      name: name + '.zip',
+      mime: 'application/zip',
+    },
+  };
 };
 
 module.exports = function (options) {
