@@ -51,6 +51,42 @@ test('api.open', async (t) => {
   t.truthy(body.options);
 });
 
+test.skip('api.paste.copy', async (t) => {
+  await fs.mkdirp(resolve(dir, 'dest'));
+  await fs.writeFile(resolve(dir, 'pt.txt'), 'Random text');
+
+  await request
+    .get(
+      url({
+        cmd: 'paste',
+        targets: [encodePath('/pt.txt')],
+        dst: encodePath('/dest'),
+      })
+    )
+    .expect(200);
+
+  t.true(await fs.exists(dir + '/dest/pt.txt'));
+  t.true(await fs.exists(dir + '/pt.txt'));
+});
+
+test('api.paste.move', async (t) => {
+  await fs.mkdirp(resolve(dir, 'dest'));
+  await fs.writeFile(resolve(dir, 'mv.txt'), 'Random text');
+
+  await request
+    .get(
+      url({
+        cmd: 'paste',
+        cut: 1,
+        targets: [encodePath('/mv.txt')],
+        dst: encodePath('/dest'),
+      })
+    )
+    .expect(200);
+
+  t.true(await fs.exists(dir + '/dest/mv.txt'));
+});
+
 test('api.rename', async (t) => {
   await fs.writeFile(resolve(dir, 'rn.txt'), 'Random text');
 
@@ -65,7 +101,6 @@ test('api.rename', async (t) => {
     .expect(200);
 
   t.true(await fs.exists(dir + '/random.txt'));
-  await fs.rm(dir + '/random.txt');
 });
 
 test('api.rm', async (t) => {

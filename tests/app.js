@@ -1,10 +1,10 @@
-const path = require('path');
+const { resolve } = require('path');
 const fs = require('fs-extra');
 const express = require('express');
 const app = express();
 const elFinder = require('../');
 
-const uploadsDir = path.resolve(__dirname, '../media/uploads');
+const uploadsDir = resolve(__dirname, '../media/uploads');
 const roots = [
   {
     driver: elFinder.LocalFileStorage,
@@ -14,9 +14,11 @@ const roots = [
   },
 ];
 
+app.use('/uploads', express.static(uploadsDir));
+
 app.use('/connector', elFinder(roots));
 app.get('/', function (req, res) {
-  res.sendFile(path.resolve(__dirname, './elfinder.html'));
+  res.sendFile(resolve(__dirname, './elfinder.html'));
 });
 
 fs.mkdirpSync(uploadsDir);

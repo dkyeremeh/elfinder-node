@@ -40,6 +40,19 @@ exports.compress = function (files, dest) {
   });
 };
 
+exports.copy = async function (opts) {
+  const fileExists = await fs.exists(opts.dst);
+  if (fileExists) throw new Error('Destination exists');
+
+  await fs.copy(opts.src, opts.dst);
+  const info = exports.info(opts.dst);
+
+  return {
+    added: [info],
+    changed: [exports.encode(path.dirname(opts.dst))],
+  };
+};
+
 exports.decode = function (dir) {
   let root, name, volume;
   if (!dir || dir.length < 4) throw Error('Invalid Path');
@@ -165,6 +178,19 @@ exports.init = function () {
     });
     return promise.resolve(results);
   });
+};
+
+exports.move = async function (opts) {
+  if (await fs.exists(opts.dst)) {
+    throw new Error('Destination exists');
+  }
+
+  await fs.move(opts.src, opts.dst);
+  const info = await exports.info(opts.dst);
+  return {
+    added: [info],
+    removed: opts.upload ? [] : [exports.encode(opts.src)],
+  };
 };
 
 //Used by exports.encode & exports.info

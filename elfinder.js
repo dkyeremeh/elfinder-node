@@ -19,7 +19,7 @@ module.exports = function (roots) {
     const cmd = req.query.cmd;
     if (cmd && connector[cmd]) {
       const result = await connector[cmd](req.query, res).catch((e) =>
-        res.json({ error: e.message })
+        res.status(500).json({ error: e.message })
       );
 
       res.json(result);
@@ -34,7 +34,7 @@ module.exports = function (roots) {
     const cmd = req.body.cmd;
     if (cmd && connector[cmd]) {
       const result = await connector[cmd](req.body, res, req.files).catch((e) =>
-        res.json({ error: e.message })
+        res.status(500).json({ error: e.message })
       );
 
       res.json(result);
