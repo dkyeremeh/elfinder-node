@@ -1,6 +1,6 @@
 ## elFinder NodeJS Connector
 
-[![Tests](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml/badge.svg?branch=master)](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml)
+[![Tests](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml/badge.svg?branch)](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml)
 [![cov](https://dkyeremeh.github.io/elfinder-node/badges/coverage.svg)](https://github.com/dkyeremeh/elfinder-node/actions)
 
 This package allows you to use [elFinder file manager](https://github.com/Studio-42/elFinder) with Nodejs.
