@@ -1,0 +1,28 @@
+name: Integration Test
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Lint checking
+        run: yarn lint
+
+      - name: Test and Coverage
+        run: yarn test:cov # or npm run coverage
+
+      - name: Update Coverage Badge
+        uses: dkyeremeh/coverage-badge-action@main
