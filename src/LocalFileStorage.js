@@ -73,8 +73,7 @@ api.extract = async function (opts, res) {
   let dest = path.dirname(target.absolutePath);
   if (mkdir) {
     const newDir = path.basename(target.absolutePath).split('.')[0];
-    const newDirPath = path.resolve(target.absolutePath, newDir);
-    console.log({ newDirPath });
+    const newDirPath = path.resolve(dest, newDir);
     await fs.mkdirp(newDirPath);
     dest = newDirPath;
   }
