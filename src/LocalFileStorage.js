@@ -18,8 +18,10 @@ const config = {
 
 config.acl = function (path) {
   const volume = helpers.volume(path);
+  const perms = config.roots[volume].permissions;
+  const permissions = perms instanceof Function ? perms(path) : perms;
   return (
-    config.roots[volume].permissions || {
+    permissions || {
       read: 1,
       write: 1,
       locked: 0,

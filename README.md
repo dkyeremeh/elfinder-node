@@ -3,18 +3,31 @@
 
 ## elFinder NodeJS Connector
 
-This is connector for elFinder in nodejs. It currently implements LocalFileStorage only.
-Work is being done to allow ftp, ssh and cloud storage compatibility
+This package allows you to use [elFinder file manager](https://github.com/Studio-42/elFinder) with Nodejs.
+It currently implements LocalFileStorage only.
+Work is being done to allow ftp, ssh and cloud storage compatibility.
+
+## Demo
+
+https://studio-42.github.io/elFinder/
 
 ## Installation
 
-```
+```sh
 npm install elfinder-node --save
+```
+
+or
+
+```sh
+yarn add elfinder-node
 ```
 
 ## Usage
 
-This package should be implemented as a middleware for Expressjs server
+This package should be implemented as a middleware for Express server. You can see an example of how this package is used [here](/tests/app.js).
+
+Below is a summary of how it is used:
 
 ```javascript
 const express = require('express');
@@ -48,19 +61,20 @@ The connector takes an array of volumes. All volumes are local files and must be
 - `driver` [optional] - The volume driver to use. Only LocalFileStorage is implemented at the moment and is the default
 - `URL` [Required] - the url which will be used to resolve files
 - `path` [Required] - The location of the folder
-- `permissions` [optional] - An object containing the file permission. Very useful when implementing a multi-user system
+- `permissions` [optional] - An object containing the file permissions. The permissions will apply to everyone if you use an object as shown in the example above.
+  You can also use a custom function which returns an object containing the permissions. This is useful for a multi-user system.
 
-## Missing Features
-
-Most of the elFinder function are working with the exception of these:
-
-- chmod: change file permission
-- extract extract archive
-- size
+```javascript
+permissions: function (path) {
+  if (user.canAccess(path)) {
+    return { read: 1, write: 1, lock: 0 };
+  } else return { read: 0, write: 0, lock: 1 };
+};
+```
 
 ## Contributing
 
-There is more work to be done to make this package complete. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done
+There is more work to be done to take this project great. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done
 
 ## Credits
 
