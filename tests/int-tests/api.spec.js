@@ -11,6 +11,7 @@ const dir = resolve(__dirname, '../../media/uploads');
 const files = {
   txt: resolve(__dirname, '../files/text.txt'),
   img: resolve(__dirname, '../files/img.jpg'),
+  zip: resolve(__dirname, '../files/zip.zip'),
 };
 
 const encodePath = (path) => 'v0_' + btoa(path);
@@ -39,25 +40,24 @@ test('api.archive', async (t) => {
   const archive = body.added?.[0];
   t.truthy(archive?.name);
   t.truthy(archive?.hash);
+  t.true(await fs.exists(dir + '/Archive.zip'));
 });
 
-test('api.chmod', async (t) => {
-  await fs.writeFile(dir + '/a.text', 'test file');
-
+test('api.extract', async (t) => {
+  await fs.copy(files.zip, dir + '/zip.zip');
   const { body } = await request
     .get(
       url({
-        cmd: 'archive',
-        name: 'Archive.zip',
-        target: encodePath('/'),
-        targets: [encodePath('/a.text')],
+        cmd: 'extract',
+        target: encodePath('/zip.zip'),
       })
     )
     .expect(200);
 
-  const archive = body.added?.[0];
-  t.truthy(archive?.name);
-  t.truthy(archive?.hash);
+  const file = body.added?.[0];
+  t.truthy(file?.name);
+  t.truthy(file?.hash);
+  t.true(await fs.exists(dir + '/zip.txt'));
 });
 
 test('api.open', async (t) => {
@@ -165,7 +165,7 @@ test('api.rm', async (t) => {
   t.false(await fs.exists(dir + '/rm.txt'));
 });
 
-test.only('api.upload', async (t) => {
+test('api.upload', async (t) => {
   const { body } = await request
     .post(url())
     .field('cmd', 'upload')
