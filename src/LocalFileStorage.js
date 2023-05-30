@@ -6,7 +6,7 @@ const _ = require('underscore');
 const Jimp = require('jimp');
 const fs = require('fs-extra');
 
-const helpers = require('./helpers');
+const helpers = require('./lfs.utils');
 
 const api = {};
 
