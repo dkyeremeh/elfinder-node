@@ -5,6 +5,8 @@ const promise = require('promise');
 const _ = require('underscore');
 const fs = require('fs-extra');
 const archiver = require('archiver');
+const Zip = require('adm-zip');
+const { promisify } = require('util');
 
 const config = {};
 exports.config = config;
@@ -93,6 +95,18 @@ exports.encode = function (dir) {
   return 'v' + info.volume + '_' + relative;
 };
 
+exports.extract = async function (source, dest) {
+  const zip = new Zip(source);
+
+  const files = zip.getEntries().map((file) => file.entryName); // an array of ZipEntry records
+  const extract = promisify(zip.extractAllToAsync);
+  await extract(dest, true);
+
+  console.log({ dest });
+
+  return files;
+};
+
 exports.filepath = function (volume, filename) {
   if (volume < 0 || volume > 2) return null;
   return path.join(config.volumes[volume], path.normalize(filename));
@@ -135,6 +149,7 @@ exports.info = function (p) {
           disabled: config.disabled,
           archivers: {
             create: ['application/zip'],
+            extract: ['application/zip'],
             createext: {
               'application/zip': 'zip',
             },

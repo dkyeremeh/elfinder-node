@@ -12,7 +12,7 @@ const api = {};
 
 const config = {
   router: '/connector',
-  disabled: ['chmod', 'extract', 'size'],
+  disabled: ['chmod', 'size'],
   volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local'],
 };
 
@@ -64,6 +64,26 @@ api.duplicate = async function (opt) {
   return {
     added: info.map((i) => i.added[0]),
   };
+};
+
+api.extract = async function (opts, res) {
+  const target = helpers.decode(opts.target);
+  const mkdir = opts.makedir == 1;
+
+  let dest = path.dirname(target.absolutePath);
+  if (mkdir) {
+    const newDir = path.basename(target.absolutePath).split('.')[0];
+    const newDirPath = path.resolve(dest, newDir);
+    await fs.mkdirp(newDirPath);
+    dest = newDirPath;
+  }
+
+  const files = await helpers.extract(target.absolutePath, dest);
+  const tasks = files.map(async (file) =>
+    helpers.info(path.resolve(dest, file))
+  );
+
+  return { added: await Promise.all(tasks) };
 };
 
 api.file = function (opts, res) {
@@ -430,7 +450,6 @@ api.upload = async function (opts, res, _files) {
 
   const info = await Promise.all(tasks);
   const added = info.map((i) => i.added[0]);
-  console.log({ added });
 
   return { added };
 };

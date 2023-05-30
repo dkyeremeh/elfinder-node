@@ -1,11 +1,12 @@
 {
   "name": "elfinder-node",
-  "version": "0.3.3",
+  "version": "1.0.0",
   "description": "Elfinder adapter for NodeJS",
   "main": "src/elfinder.js",
   "author": "d.kyeremeh@dekyfin.com",
   "license": "MIT",
   "dependencies": {
+    "adm-zip": "^0.5.10",
     "archiver": "^1.2.0",
     "express": "^4.15.2",
     "express-busboy": "^10.1.0",
@@ -34,10 +35,17 @@
     "url": "git+https://github.com/dekyfin/elfinder-node.git"
   },
   "keywords": [
+    "filemanager",
     "elFinder",
     "nodejs",
     "connector"
   ],
+  "nodemonConfig": {
+    "ignore": [
+      "media/*",
+      "tests/*"
+    ]
+  },
   "bugs": {
     "url": "https://github.com/dekyfin/elfinder-node/issues"
   },
