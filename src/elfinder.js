@@ -6,6 +6,7 @@ const connector = LFS.api;
 
 //Configure busboy
 const busboy = require('express-busboy');
+const { notImplementedError } = require('./utils');
 
 module.exports = function (roots) {
   const volumes = roots.map((r) => r.path);
@@ -23,29 +24,28 @@ module.exports = function (roots) {
 
   router.get('/', async function (req, res) {
     const cmd = req.query.cmd;
-    if (cmd && connector[cmd]) {
-      const result = await connector[cmd](req.query, res).catch((e) =>
-        res.status(500).json({ error: e.message })
-      );
-
-      res.json(result);
-    } else {
-      res.json({ error: cmd + ' is not implemented by volume driver' });
+    try {
+      if (!connector[cmd]) throw notImplementedError(cmd);
+      const result = await connector[cmd](req.query, res);
+      if (result) res.json(result);
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: e.message });
     }
   });
 
   router.post('/', async function (req, res) {
     const cmd = req.body.cmd;
-    if (cmd && connector[cmd]) {
+    try {
+      if (!connector[cmd]) throw notImplementedError(cmd);
       const result = await connector[cmd](
         req.body,
         res,
         req.files?.['upload[]']
-      ).catch((e) => res.status(500).json({ error: e.message }));
-
-      res.json(result);
-    } else {
-      res.json({ error: cmd + ' is not implemented by volume driver' });
+      );
+      if (result) res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   });
 
