@@ -7,15 +7,16 @@ const connector = LFS.api;
 //Configure busboy
 const busboy = require('express-busboy');
 const { notImplementedError } = require('./utils');
+const { filepath } = require('./lfs.utils');
 
 module.exports = function (roots) {
   const volumes = roots.map((r) => r.path);
-  const media = path.resolve(volumes[0]);
+  const tmbroot = path.resolve(volumes[0], '.tmb');
 
   LFS({
-    roots: roots,
-    tmbroot: path.join(media, '.tmb'),
-    volumes: volumes,
+    roots,
+    volumes,
+    tmbroot,
   });
 
   busboy.extend(router, {
@@ -53,9 +54,9 @@ module.exports = function (roots) {
     res.sendFile(connector.tmbfile(req.params.filename));
   });
 
-  //TODO: Remove this code after removing its dependency in LFS
+  // Fallback file access in case URL is not defined
   router.get('/file/:volume/*', function (req, res) {
-    const file = connector.filepath(req.params.volume, req.params['0']);
+    const file = filepath(req.params.volume, req.params['0']);
     if (file) res.sendFile(file);
     else {
       res.status(404);
