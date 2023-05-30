@@ -102,8 +102,6 @@ exports.extract = async function (source, dest) {
   const extract = promisify(zip.extractAllToAsync);
   await extract(dest, true);
 
-  console.log({ dest });
-
   return files;
 };
 

@@ -15,7 +15,6 @@ const files = {
 };
 
 const encodePath = (path) => 'v0_' + btoa(path);
-const decodePath = (string) => atob(string.split('_').pop());
 
 const url = (query = {}) => {
   return `/connector?${qs.stringify(query)}`;

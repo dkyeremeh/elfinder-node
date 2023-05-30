@@ -1,4 +1,4 @@
-[![Integration Test](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml/badge.svg?branch=master)](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml)
+[![Tests](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml/badge.svg?branch=master)](https://github.com/dkyeremeh/elfinder-node/actions/workflows/int-test.yml)
 [![cov](https://dkyeremeh.github.io/elfinder-node/badges/coverage.svg)](https://github.com/dkyeremeh/elfinder-node/actions)
 
 ## elFinder NodeJS Connector
