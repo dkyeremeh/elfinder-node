@@ -25,4 +25,4 @@ jobs:
         run: yarn test:cov # or npm run coverage
 
       - name: Update Coverage Badge
-        uses: we-cli/coverage-badge-action@main
+        uses: dkyeremeh/coverage-badge-action@main
