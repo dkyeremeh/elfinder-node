@@ -18,5 +18,8 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Run tests
-        run: yarn test:int
+      - name: Test and Coverage
+        run: yarn test:cov # or npm run coverage
+
+      - name: Update Coverage Badge
+        uses: we-cli/coverage-badge-action@master

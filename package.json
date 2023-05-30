@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "ava": "^5.3.0",
+    "c8": "^7.14.0",
     "eslint": "^8.41.0",
     "nodemon": "^2.0.22",
     "prettier": "^2.8.8",
@@ -28,7 +29,8 @@
   "scripts": {
     "lint": "eslint .",
     "serve": "nodemon tests/server.js",
-    "test:int": "ava tests/int-tests/**/*.js"
+    "test:int": "ava tests/int-tests/**/*.js",
+    "test:cov": "c8 ava tests/int-tests/**/*.js"
   },
   "repository": {
     "type": "git",

@@ -2,6 +2,7 @@ node_modules/
 sample/
 package-lock.json
 
+/coverage
 /media
 
 .DS_Store
