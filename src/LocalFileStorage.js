@@ -73,7 +73,8 @@ api.extract = async function (opts, res) {
   let dest = path.dirname(target.absolutePath);
   if (mkdir) {
     const newDir = path.basename(target.absolutePath).split('.')[0];
-    const newDirPath = path.resolve(dest, newDir);
+    const newDirPath = path.resolve(target.absolutePath, newDir);
+    console.log({ newDirPath });
     await fs.mkdirp(newDirPath);
     dest = newDirPath;
   }
@@ -168,14 +169,14 @@ api.open = async function (opts, res) {
     helpers.info(path.join(target.absolutePath, file))
   );
 
+  data.files = await Promise.all(tasks);
+  data.cwd = await helpers.info(target.absolutePath);
+
   if (init) {
     data.api = '2.1';
     volumes = await helpers.init();
     data.files = volumes.concat(data.files);
   }
-
-  data.cwd = await helpers.info(target.absolutePath);
-  data.files = await Promise.all(tasks);
 
   return data;
 };
