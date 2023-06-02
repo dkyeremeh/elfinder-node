@@ -1,7 +1,7 @@
 {
   "name": "elfinder-node",
-  "version": "1.0.0",
-  "description": "Elfinder adapter for NodeJS",
+  "version": "1.0.1",
+  "description": "A NodeJS connector/backend for elFinder file manager",
   "main": "src/elfinder.js",
   "author": "d.kyeremeh@dekyfin.com",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "url": "git+https://github.com/dekyfin/elfinder-node.git"
   },
   "keywords": [
-    "filemanager",
+    "file manager",
     "elFinder",
     "nodejs",
     "connector"

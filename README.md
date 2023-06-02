@@ -25,7 +25,7 @@ yarn add elfinder-node
 
 ## Usage
 
-This package should be implemented as a middleware for Express server. You can see an example of how this package is used [here](/tests/app.js).
+This package should be implemented as a middleware for Express server. You can see an example of how this package is used [here](/tests).
 
 Below is a summary of how it is used:
 
@@ -74,7 +74,7 @@ permissions: function (path) {
 
 ## Contributing
 
-There is more work to be done to take this project great. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done
+There is more work to be done to make this project great. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done
 
 ## Credits
 
