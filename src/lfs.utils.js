@@ -1,4 +1,4 @@
-const base64 = require('base-64');
+const lz = require('lzutf8'); //Remove after decoupling
 const path = require('path'); //Remove
 const mime = require('mime-types');
 const promise = require('promise');
@@ -67,7 +67,7 @@ exports.decode = function (dir) {
     .replace(/_/g, '/')
     .replace(/\./g, '=');
 
-  relative = base64.decode(relative + '==', {
+  relative = lz.decompress(relative + '==', {
     inputEncoding: 'Base64',
   });
   name = path.basename(relative);
@@ -84,8 +84,10 @@ exports.decode = function (dir) {
 //Used by exports.info, api.opne, api.tmb, api.zipdl
 exports.encode = function (dir) {
   const info = exports.parse(dir);
-  const relative = base64
-    .encode(info.path)
+  const relative = lz
+    .compress(info.path, {
+      outputEncoding: 'Base64',
+    })
     .replace(/=+$/g, '')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')

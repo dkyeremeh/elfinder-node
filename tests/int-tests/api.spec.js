@@ -3,7 +3,6 @@ const app = require('../app');
 const qs = require('qs');
 const fs = require('fs-extra');
 const { resolve } = require('path');
-const base64 = require('base-64');
 
 const request = require('supertest')(app);
 const volume = 'v0_Lw';
@@ -15,7 +14,7 @@ const files = {
   zip: resolve(__dirname, '../files/zip.zip'),
 };
 
-const encodePath = (path) => 'v0_' + base64.encode(path);
+const encodePath = (path) => 'v0_' + btoa(path);
 
 const url = (query = {}) => {
   return `/connector?${qs.stringify(query)}`;

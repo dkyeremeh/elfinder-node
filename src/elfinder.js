@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const LFS = require('./LocalFileStorage');
+const LFS = require('./lfs');
 const connector = LFS.api;
 
 //Configure busboy
@@ -68,3 +68,4 @@ module.exports = function (roots) {
 };
 
 module.exports.LocalFileStorage = LFS;
+module.exports.LFS = LFS;
