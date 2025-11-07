@@ -6,8 +6,12 @@ import { notImplementedError } from './utils';
 import { filepath, tmbfile } from './lfs.utils';
 import { VolumeRoot } from './types';
 
+type Connector = typeof api & {
+  [key: string]: Function;
+};
+
 const router: Router = express.Router();
-const connector = api as any;
+const connector = api as Connector;
 
 export function elfinder(roots: VolumeRoot[]): Router {
   const volumes = roots.map((r) => r.path);
@@ -30,7 +34,7 @@ export function elfinder(roots: VolumeRoot[]): Router {
       const result = await connector[cmd](req.query, res);
       if (result) res.json(result);
     } catch (e: any) {
-      console.log(req.query, e);
+      console.error(req.query, e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -39,9 +43,14 @@ export function elfinder(roots: VolumeRoot[]): Router {
     const cmd = req.body.cmd as string;
     try {
       if (!connector[cmd]) throw notImplementedError(cmd);
-      const result = await connector[cmd](req.body, res, req.files?.['upload[]']);
+      const result = await connector[cmd](
+        req.body,
+        res,
+        req.files?.['upload[]']
+      );
       if (result) res.json(result);
     } catch (e: any) {
+      console.error(req.query, e);
       res.status(500).json({ error: e.message });
     }
   });

@@ -1,5 +1,3 @@
-import { Response } from 'express';
-
 declare module 'express-serve-static-core' {
   interface Request {
     files?: {
@@ -91,37 +89,6 @@ export interface CopyMoveResult {
   added: FileInfo[];
   removed?: string[];
   changed?: string[];
-}
-
-export interface ApiCommand {
-  (opts: any, res: Response, files?: any): Promise<any>;
-}
-
-export interface ApiCommands {
-  [key: string]: ApiCommand;
-  archive: ApiCommand;
-  dim: ApiCommand;
-  duplicate: ApiCommand;
-  extract: ApiCommand;
-  file: ApiCommand;
-  get: ApiCommand;
-  info: ApiCommand;
-  ls: ApiCommand;
-  mkdir: ApiCommand;
-  mkfile: ApiCommand;
-  open: ApiCommand;
-  parents: ApiCommand;
-  paste: ApiCommand;
-  put: ApiCommand;
-  rename: ApiCommand;
-  resize: ApiCommand;
-  rm: ApiCommand;
-  size: ApiCommand;
-  search: ApiCommand;
-  tmb: ApiCommand;
-  tree: ApiCommand;
-  upload: ApiCommand;
-  zipdl: ApiCommand;
 }
 
 export interface UploadedFile {
