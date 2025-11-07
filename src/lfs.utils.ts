@@ -272,3 +272,92 @@ export const volume = (p: string, config: LFSConfig): number => {
   }
   return -1;
 };
+
+export interface ChunkUploadOptions {
+  chunkName: string;
+  chunkFile: string;
+  range: string;
+  destinationDir: string;
+}
+
+export interface ChunkUploadResult {
+  isComplete: boolean;
+  finalPath?: string;
+  chunkPath: string;
+}
+
+/**
+ * Handles uploading a single chunk of a file
+ * Returns information about whether the upload is complete and where the file is located
+ */
+export const handleChunkUpload = async (
+  opts: ChunkUploadOptions
+): Promise<ChunkUploadResult> => {
+  const { chunkName, chunkFile, range, destinationDir } = opts;
+  const [start, , totalSize] = range.split(',').map(Number);
+
+  // Extract real filename by removing the chunk pattern (.N_M.part)
+  const realFilename = chunkName.replace(/\.\d+_\d+\.part$/, '');
+  const finalPath = path.join(destinationDir, realFilename);
+  const chunkPath = path.join(destinationDir, chunkName);
+
+  // Ensure destination directory exists
+  await fs.ensureDir(destinationDir);
+
+  // Move uploaded chunk to temp location
+  await fs.move(chunkFile, chunkPath, { overwrite: true });
+
+  // Check if this is the last chunk by checking file size
+  const chunkStat = await fs.stat(chunkPath);
+  const isLastChunk = start + chunkStat.size >= totalSize;
+
+  if (isLastChunk) {
+    // Merge all chunks into final file
+    await mergeChunks(realFilename, destinationDir);
+    return { isComplete: true, finalPath, chunkPath };
+  }
+
+  return { isComplete: false, chunkPath };
+};
+
+/**
+ * Merges all chunk files for a given filename into a single file
+ */
+const mergeChunks = async (
+  filename: string,
+  directory: string
+): Promise<void> => {
+  const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const chunkPattern = new RegExp(`^${escapedFilename}\\.\\d+_\\d+\\.part$`);
+
+  // Find and sort all chunk files
+  const chunkFiles = (await fs.readdir(directory))
+    .filter((f) => chunkPattern.test(f))
+    .sort((a, b) => {
+      // Extract chunk numbers for proper sorting
+      const aMatch = a.match(/\.(\d+)_\d+\.part$/);
+      const bMatch = b.match(/\.(\d+)_\d+\.part$/);
+      const aNum = aMatch ? parseInt(aMatch[1]) : 0;
+      const bNum = bMatch ? parseInt(bMatch[1]) : 0;
+      return aNum - bNum;
+    });
+
+  const finalPath = path.join(directory, filename);
+  const writeStream = fs.createWriteStream(finalPath);
+
+  // Write each chunk in order and clean up
+  for (const chunk of chunkFiles) {
+    const chunkFullPath = path.join(directory, chunk);
+    const data = await fs.readFile(chunkFullPath);
+    writeStream.write(data);
+    await fs.remove(chunkFullPath);
+  }
+
+  // Finalize the write stream
+  await new Promise<void>((resolve, reject) => {
+    writeStream.end((err?: Error) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+};

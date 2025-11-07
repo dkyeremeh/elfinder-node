@@ -74,38 +74,6 @@ permissions: function (path) {
 };
 ```
 
-## Custom Drivers
-
-As of version 2.0, elfinder-node supports custom volume drivers, allowing you to implement support for different storage backends (FTP, S3, SSH, etc.). Each volume can have its own driver configured independently.
-
-### Creating a Custom Driver
-
-````
-
-### Using Custom Drivers
-
-You can specify different drivers for each volume:
-
-```javascript
-const { elfinder, LocalFileStorage } = require('elfinder-node');
-const MyS3Driver = require('./my-s3-driver');
-
-const roots = [
-  {
-    driver: LocalFileStorage, // Use local file system for this volume
-    URL: '/uploads/',
-    path: '/path/to/local/dir',
-  },
-  {
-    driver: MyS3Driver, // Use custom S3 driver for this volume
-    URL: '/s3-files/',
-    path: 's3://my-bucket/folder',
-  },
-];
-
-app.use('/connector', elfinder(roots));
-````
-
 ## Contributing
 
 There is more work to be done to make this project great. View the [ROADMAP](/ROADMAP.md) for a list of tasks to be done

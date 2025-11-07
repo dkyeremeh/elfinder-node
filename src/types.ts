@@ -37,7 +37,6 @@ export interface FileInfo {
 }
 
 export type VolumeDriver = {
-  config: any;
   archive: (opts: ArchiveOpts) => Promise<any>;
   dim: (opts: DimOpts) => Promise<any>;
   duplicate: (opts: DuplicateOpts) => Promise<any>;
@@ -234,7 +233,12 @@ export interface UploadOpts {
   target: string;
   upload_path?: string[];
   renames?: string[];
-  suffix: string;
+  suffix?: string;
+  chunk?: string;
+  range?: string;
+  cid?: string;
+  mtime?: string[];
+  dropWith?: string;
 }
 
 export interface ZipdlOpts {

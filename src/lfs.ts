@@ -33,7 +33,6 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
   };
 
   return {
-    config,
     archive: async function (opts) {
       const target = helpers.decode(opts.target, config);
       const filePath = path.join(target.absolutePath, opts.name);
@@ -436,29 +435,68 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
     upload: async function (opts, _res, _files?) {
       const target = helpers.decode(opts.target, config);
+
+      // Handle chunked upload
+      if (opts.chunk && opts.range) {
+        const chunkFile = _files instanceof Array ? _files[0] : _files;
+        if (!chunkFile) {
+          throw new Error('Chunk file not provided');
+        }
+
+        let dst = target.absolutePath;
+        if (opts.upload_path && opts.upload_path[0]) {
+          dst = path.join(dst, path.dirname(opts.upload_path[0]));
+        }
+
+        const result = await helpers.handleChunkUpload({
+          chunkName: opts.chunk,
+          chunkFile: chunkFile.file,
+          range: opts.range,
+          destinationDir: dst,
+        });
+
+        if (result.isComplete && result.finalPath) {
+          // Return file info for the completed upload
+          const fileInfo = await helpers.info(result.finalPath, config);
+          return { added: [fileInfo] };
+        } else {
+          // Not the last chunk, return empty response
+          const chunkName = opts.chunk;
+          const realFilename = chunkName.replace(/\.\d+_\d+\.part$/, '');
+          return {
+            added: [],
+            _chunkmerged: chunkName,
+            _name: realFilename,
+          };
+        }
+      }
+
+      // Handle regular upload (non-chunked)
       const files = _files instanceof Array ? _files : [_files!];
 
-      const tasks = files.map(async (file, i) => {
-        let filename = file.filename;
-        let dst = target.absolutePath;
-        if (opts.upload_path) {
-          dst = path.join(dst, path.dirname(opts.upload_path[i]));
-        }
+      const tasks = files
+        .filter((file) => file !== undefined)
+        .map(async (file, i) => {
+          let filename = file.filename;
+          let dst = target.absolutePath;
+          if (opts.upload_path) {
+            dst = path.join(dst, path.dirname(opts.upload_path[i]));
+          }
 
-        if (opts.renames?.indexOf(file.filename)) {
-          filename = helpers.suffix(file.filename, opts.suffix);
-        }
-        dst = path.join(dst, filename);
+          if (opts.renames?.indexOf(file.filename) && opts.suffix) {
+            filename = helpers.suffix(file.filename, opts.suffix);
+          }
+          dst = path.join(dst, filename);
 
-        return helpers.move(
-          {
-            dst,
-            src: file.file,
-            upload: true,
-          },
-          config
-        );
-      });
+          return helpers.move(
+            {
+              dst,
+              src: file.file,
+              upload: true,
+            },
+            config
+          );
+        });
 
       const info = await Promise.all(tasks);
       const added = info.map((i) => i.added[0]);
