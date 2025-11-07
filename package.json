@@ -1,6 +1,6 @@
 {
   "name": "elfinder-node",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A NodeJS connector/backend for elFinder file manager",
   "main": "dist/elfinder.js",
   "types": "dist/elfinder.d.ts",
@@ -62,6 +62,10 @@
       "tests/*"
     ]
   },
+  "files": [
+    "README.md",
+    "dist"
+  ],
   "bugs": {
     "url": "https://github.com/dekyfin/elfinder-node/issues"
   },
