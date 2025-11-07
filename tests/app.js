@@ -2,7 +2,7 @@ const { resolve } = require('path');
 const fs = require('fs-extra');
 const express = require('express');
 const app = express();
-const elFinder = require('../');
+const elFinder = require('../dist/elfinder');
 
 const uploadsDir = resolve(__dirname, '../media/uploads');
 const roots = [

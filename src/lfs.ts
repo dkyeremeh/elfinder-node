@@ -5,7 +5,33 @@ import Jimp from 'jimp';
 import * as fs from 'fs-extra';
 import { Response } from 'express';
 import * as helpers from './lfs.utils';
-import { Config, ApiCommands, FileInfo, UploadedFile } from './types';
+import {
+  Config,
+  ApiCommands,
+  FileInfo,
+  UploadedFile,
+  ArchiveOpts,
+  DimOpts,
+  DuplicateOpts,
+  ExtractOpts,
+  FileOpts,
+  GetOpts,
+  LsOpts,
+  MkdirOpts,
+  MkfileOpts,
+  OpenOpts,
+  ParentsOpts,
+  PasteOpts,
+  PutOpts,
+  RenameOpts,
+  ResizeOpts,
+  RmOpts,
+  SearchOpts,
+  TmbOpts,
+  TreeOpts,
+  UploadOpts,
+  ZipdlOpts,
+} from './types';
 
 const api: Partial<ApiCommands> = {};
 
@@ -28,7 +54,7 @@ config.acl = function (filePath: string) {
   );
 };
 
-api.archive = async (opts: any, res: Response): Promise<any> => {
+api.archive = async (opts: ArchiveOpts) => {
   const target = helpers.decode(opts.target);
   const filePath = path.join(target.absolutePath, opts.name);
   await helpers.compress(opts.targets, filePath);
@@ -38,7 +64,7 @@ api.archive = async (opts: any, res: Response): Promise<any> => {
   };
 };
 
-api.dim = async (opts: any, res: Response): Promise<any> => {
+api.dim = async (opts: DimOpts) => {
   const target = helpers.decode(opts.target);
   const img = await Jimp.read(target.absolutePath);
   return {
@@ -46,7 +72,7 @@ api.dim = async (opts: any, res: Response): Promise<any> => {
   };
 };
 
-api.duplicate = async (opt: any): Promise<any> => {
+api.duplicate = async (opt: DuplicateOpts) => {
   const tasks = opt.targets.map(async (target: string) => {
     const _t = helpers.decode(target);
     const ext = path.extname(_t.name);
@@ -67,7 +93,7 @@ api.duplicate = async (opt: any): Promise<any> => {
   };
 };
 
-api.extract = async (opts: any, res: Response): Promise<any> => {
+api.extract = async (opts: ExtractOpts) => {
   const target = helpers.decode(opts.target);
   const mkdir = opts.makedir == 1;
 
@@ -80,25 +106,27 @@ api.extract = async (opts: any, res: Response): Promise<any> => {
   }
 
   const files = await helpers.extract(target.absolutePath, dest);
-  const tasks = files.map(async (file) => helpers.info(path.resolve(dest, file)));
+  const tasks = files.map(async (file) =>
+    helpers.info(path.resolve(dest, file))
+  );
 
   return { added: await Promise.all(tasks) };
 };
 
-api.file = async (opts: any, res: Response): Promise<void> => {
+api.file = async (opts: FileOpts, res: Response): Promise<void> => {
   const target = helpers.decode(opts.target);
   res.sendFile(target.absolutePath);
 };
 
-api.get = async (opts: any, res: Response): Promise<any> => {
+api.get = async (opts: GetOpts) => {
   const target = helpers.decode(opts.target);
   const content = await fs.readFile(target.absolutePath, 'utf8');
   return { content };
 };
 
-api.info = async (opts: any, res: Response): Promise<any> => {};
+api.info = async () => {};
 
-api.ls = async (opts: any, res: Response): Promise<any> => {
+api.ls = async (opts: LsOpts) => {
   if (!opts.target) throw new Error('errCmdParams');
 
   const info = helpers.decode(opts.target);
@@ -111,7 +139,7 @@ api.ls = async (opts: any, res: Response): Promise<any> => {
   return { list };
 };
 
-api.mkdir = async (opts: any, res: Response): Promise<any> => {
+api.mkdir = async (opts: MkdirOpts) => {
   const dir = helpers.decode(opts.target);
   const dirs = opts.dirs || [];
   if (opts.name) {
@@ -128,7 +156,7 @@ api.mkdir = async (opts: any, res: Response): Promise<any> => {
   return { added };
 };
 
-api.mkfile = async (opts: any, res: Response): Promise<any> => {
+api.mkfile = async (opts: MkfileOpts) => {
   const dir = helpers.decode(opts.target);
   const name = opts.name;
   const filePath = dir.absolutePath + path.sep + name;
@@ -137,9 +165,9 @@ api.mkfile = async (opts: any, res: Response): Promise<any> => {
   return { added: [await helpers.info(filePath)] };
 };
 
-api.open = async (opts: any, res: Response): Promise<any> => {
+api.open = async (opts: OpenOpts) => {
   let volumes: FileInfo[] | undefined;
-  let target = opts.target;
+  let targetHash = opts.target;
   const init = opts.init == true;
   const encodedRoot = helpers.encode(config.volumes![0] + path.sep);
   const data: any = {
@@ -151,11 +179,11 @@ api.open = async (opts: any, res: Response): Promise<any> => {
 
   if (init) {
     config.init?.();
-    target ??= encodedRoot;
+    targetHash ??= encodedRoot;
   }
-  if (!target) throw new Error('errCmdParams');
+  if (!targetHash) throw new Error('errCmdParams');
 
-  target = helpers.decode(target);
+  let target = helpers.decode(targetHash);
   const dirExists = await fs.pathExists(target.absolutePath);
   if (!dirExists) target = helpers.decode(encodedRoot);
 
@@ -176,7 +204,7 @@ api.open = async (opts: any, res: Response): Promise<any> => {
   return data;
 };
 
-api.parents = async (opts: any, res: Response): Promise<any> => {
+api.parents = async (opts: ParentsOpts) => {
   if (!opts.target) throw new Error('errCmdParams');
 
   const dir = helpers.decode(opts.target);
@@ -207,7 +235,7 @@ api.parents = async (opts: any, res: Response): Promise<any> => {
   return { tree };
 };
 
-api.paste = async (opts: any, res: Response): Promise<any> => {
+api.paste = async (opts: PasteOpts) => {
   const dest = helpers.decode(opts.dst);
 
   const tasks = opts.targets.map(async (target: string) => {
@@ -247,16 +275,16 @@ api.paste = async (opts: any, res: Response): Promise<any> => {
   return rtn;
 };
 
-api.put = async (opts: any, res: Response): Promise<any> => {
+api.put = async (opts: PutOpts) => {
   const target = helpers.decode(opts.target);
-  const { content, encoding = 'UTF-8' } = opts;
+  const { content } = opts;
 
   await fs.writeFile(target.absolutePath, content);
   const info = await helpers.info(target.absolutePath);
   return { changed: [info] };
 };
 
-api.rename = async (opts: any, res: Response): Promise<any> => {
+api.rename = async (opts: RenameOpts) => {
   if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const dirname = path.dirname(dir.absolutePath);
@@ -266,7 +294,7 @@ api.rename = async (opts: any, res: Response): Promise<any> => {
   });
 };
 
-api.resize = async (opts: any, res: Response): Promise<any> => {
+api.resize = async (opts: ResizeOpts) => {
   const target = helpers.decode(opts.target);
   let image = await Jimp.read(target.absolutePath);
 
@@ -300,7 +328,7 @@ api.resize = async (opts: any, res: Response): Promise<any> => {
   };
 };
 
-api.rm = async (opts: any, res: Response): Promise<any> => {
+api.rm = async (opts: RmOpts) => {
   const removed: string[] = [];
 
   for (const hash of opts.targets) {
@@ -312,13 +340,13 @@ api.rm = async (opts: any, res: Response): Promise<any> => {
   return { removed };
 };
 
-api.size = async (opts: any, res: Response): Promise<any> => {
+api.size = async () => {
   return {
     size: 'unkown',
   };
 };
 
-api.search = async (opts: any, res: Response): Promise<any> => {
+api.search = async (opts: SearchOpts) => {
   if (!opts.q || opts.q.length < 1) {
     throw new Error('errCmdParams');
   }
@@ -348,7 +376,7 @@ api.search = async (opts: any, res: Response): Promise<any> => {
   return { files };
 };
 
-api.tmb = async (opts: any, res: Response): Promise<any> => {
+api.tmb = async (opts: TmbOpts) => {
   const files: string[] = [];
 
   if (opts.current) {
@@ -375,10 +403,12 @@ api.tmb = async (opts: any, res: Response): Promise<any> => {
       Jimp.read(file).then(async (img) => {
         const op = helpers.encode(file);
         await new Promise<void>((resolve, reject) => {
-          img.resize(48, 48).write(path.join(config.tmbroot!, op + '.png'), (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
+          img
+            .resize(48, 48)
+            .write(path.join(config.tmbroot!, op + '.png'), (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
         });
         return op;
       })
@@ -397,7 +427,7 @@ api.tmb = async (opts: any, res: Response): Promise<any> => {
   };
 };
 
-api.tree = async (opts: any, res: Response): Promise<any> => {
+api.tree = async (opts: TreeOpts) => {
   if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const files = await helpers.readdir(dir.absolutePath);
@@ -412,7 +442,11 @@ api.tree = async (opts: any, res: Response): Promise<any> => {
   return { tree };
 };
 
-api.upload = async (opts: any, res: Response, _files?: UploadedFile | UploadedFile[]): Promise<any> => {
+api.upload = async (
+  opts: UploadOpts,
+  _res: Response,
+  _files?: UploadedFile | UploadedFile[]
+) => {
   const target = helpers.decode(opts.target);
   const files = _files instanceof Array ? _files : [_files!];
 
@@ -441,11 +475,11 @@ api.upload = async (opts: any, res: Response, _files?: UploadedFile | UploadedFi
   return { added };
 };
 
-api.zipdl = async (opts: any, res: Response): Promise<any> => {
+api.zipdl = async (opts: ZipdlOpts) => {
   if (!opts.targets?.length) throw new Error('errCmdParams');
 
-  let first = opts.targets[0];
-  first = helpers.decode(first);
+  const firstHash = opts.targets[0];
+  const first = helpers.decode(firstHash);
   const dir = path.dirname(first.absolutePath);
   const name = path.basename(dir);
   const file = path.join(dir, name + '.zip');

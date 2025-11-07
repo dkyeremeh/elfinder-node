@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -127,4 +127,116 @@ export interface ApiCommands {
 export interface UploadedFile {
   filename: string;
   file: string;
+}
+
+// API Command Options
+export interface ArchiveOpts {
+  target: string;
+  name: string;
+  targets: string[];
+}
+
+export interface DimOpts {
+  target: string;
+}
+
+export interface DuplicateOpts {
+  targets: string[];
+}
+
+export interface ExtractOpts {
+  target: string;
+  makedir?: number;
+}
+
+export interface FileOpts {
+  target: string;
+}
+
+export interface GetOpts {
+  target: string;
+}
+
+export interface LsOpts {
+  target: string;
+  intersect?: string[];
+}
+
+export interface MkdirOpts {
+  target: string;
+  name?: string;
+  dirs?: string[];
+}
+
+export interface MkfileOpts {
+  target: string;
+  name: string;
+}
+
+export interface OpenOpts {
+  target?: string;
+  init?: boolean;
+}
+
+export interface ParentsOpts {
+  target: string;
+}
+
+export interface PasteOpts {
+  dst: string;
+  targets: string[];
+  cut?: number;
+  renames?: string[];
+  suffix?: string;
+}
+
+export interface PutOpts {
+  target: string;
+  content: string;
+}
+
+export interface RenameOpts {
+  target: string;
+  name: string;
+}
+
+export interface ResizeOpts {
+  target: string;
+  mode: 'resize' | 'crop' | 'rotate';
+  width: string;
+  height: string;
+  x: string;
+  y: string;
+  degree: string;
+  bg: string;
+  quality: string;
+}
+
+export interface RmOpts {
+  targets: string[];
+}
+
+export interface SearchOpts {
+  target: string;
+  q: string;
+}
+
+export interface TmbOpts {
+  current?: string;
+  targets?: string[];
+}
+
+export interface TreeOpts {
+  target: string;
+}
+
+export interface UploadOpts {
+  target: string;
+  upload_path?: string[];
+  renames?: string[];
+  suffix: string;
+}
+
+export interface ZipdlOpts {
+  targets: string[];
 }
