@@ -7,7 +7,6 @@ import { Response } from 'express';
 import * as helpers from './lfs.utils';
 import {
   Config,
-  ApiCommands,
   FileInfo,
   UploadedFile,
   ArchiveOpts,
@@ -33,8 +32,6 @@ import {
   ZipdlOpts,
 } from './types';
 
-const api: Partial<ApiCommands> = {};
-
 const config: Partial<Config> = {
   router: '/connector',
   disabled: ['chmod', 'size'],
@@ -54,7 +51,7 @@ config.acl = function (filePath: string) {
   );
 };
 
-api.archive = async (opts: ArchiveOpts) => {
+export async function archive(opts: ArchiveOpts) {
   const target = helpers.decode(opts.target);
   const filePath = path.join(target.absolutePath, opts.name);
   await helpers.compress(opts.targets, filePath);
@@ -64,15 +61,15 @@ api.archive = async (opts: ArchiveOpts) => {
   };
 };
 
-api.dim = async (opts: DimOpts) => {
+export async function dim(opts: DimOpts) {
   const target = helpers.decode(opts.target);
   const img = await Jimp.read(target.absolutePath);
   return {
     dim: img.bitmap.width + 'x' + img.bitmap.height,
   };
-};
+}
 
-api.duplicate = async (opt: DuplicateOpts) => {
+export async function duplicate(opt: DuplicateOpts) {
   const tasks = opt.targets.map(async (target: string) => {
     const _t = helpers.decode(target);
     const ext = path.extname(_t.name);
@@ -93,7 +90,7 @@ api.duplicate = async (opt: DuplicateOpts) => {
   };
 };
 
-api.extract = async (opts: ExtractOpts) => {
+export async function extract(opts: ExtractOpts) {
   const target = helpers.decode(opts.target);
   const mkdir = opts.makedir == 1;
 
@@ -113,20 +110,20 @@ api.extract = async (opts: ExtractOpts) => {
   return { added: await Promise.all(tasks) };
 };
 
-api.file = async (opts: FileOpts, res: Response): Promise<void> => {
+export async function file(opts: FileOpts, res: Response): Promise<void> {
   const target = helpers.decode(opts.target);
   res.sendFile(target.absolutePath);
-};
+}
 
-api.get = async (opts: GetOpts) => {
+export async function get(opts: GetOpts) {
   const target = helpers.decode(opts.target);
   const content = await fs.readFile(target.absolutePath, 'utf8');
   return { content };
-};
+}
 
-api.info = async () => {};
+export async function info() {}
 
-api.ls = async (opts: LsOpts) => {
+export async function ls(opts: LsOpts) {
   if (!opts.target) throw new Error('errCmdParams');
 
   const info = helpers.decode(opts.target);
@@ -139,7 +136,7 @@ api.ls = async (opts: LsOpts) => {
   return { list };
 };
 
-api.mkdir = async (opts: MkdirOpts) => {
+export async function mkdir(opts: MkdirOpts) {
   const dir = helpers.decode(opts.target);
   const dirs = opts.dirs || [];
   if (opts.name) {
@@ -156,7 +153,7 @@ api.mkdir = async (opts: MkdirOpts) => {
   return { added };
 };
 
-api.mkfile = async (opts: MkfileOpts) => {
+export async function mkfile(opts: MkfileOpts) {
   const dir = helpers.decode(opts.target);
   const name = opts.name;
   const filePath = dir.absolutePath + path.sep + name;
@@ -165,7 +162,7 @@ api.mkfile = async (opts: MkfileOpts) => {
   return { added: [await helpers.info(filePath)] };
 };
 
-api.open = async (opts: OpenOpts) => {
+export async function open(opts: OpenOpts) {
   let volumes: FileInfo[] | undefined;
   let targetHash = opts.target;
   const init = opts.init == true;
@@ -204,7 +201,7 @@ api.open = async (opts: OpenOpts) => {
   return data;
 };
 
-api.parents = async (opts: ParentsOpts) => {
+export async function parents(opts: ParentsOpts) {
   if (!opts.target) throw new Error('errCmdParams');
 
   const dir = helpers.decode(opts.target);
@@ -235,7 +232,7 @@ api.parents = async (opts: ParentsOpts) => {
   return { tree };
 };
 
-api.paste = async (opts: PasteOpts) => {
+export async function paste(opts: PasteOpts) {
   const dest = helpers.decode(opts.dst);
 
   const tasks = opts.targets.map(async (target: string) => {
@@ -275,7 +272,7 @@ api.paste = async (opts: PasteOpts) => {
   return rtn;
 };
 
-api.put = async (opts: PutOpts) => {
+export async function put(opts: PutOpts) {
   const target = helpers.decode(opts.target);
   const { content } = opts;
 
@@ -284,7 +281,7 @@ api.put = async (opts: PutOpts) => {
   return { changed: [info] };
 };
 
-api.rename = async (opts: RenameOpts) => {
+export async function rename(opts: RenameOpts) {
   if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const dirname = path.dirname(dir.absolutePath);
@@ -294,7 +291,7 @@ api.rename = async (opts: RenameOpts) => {
   });
 };
 
-api.resize = async (opts: ResizeOpts) => {
+export async function resize(opts: ResizeOpts) {
   const target = helpers.decode(opts.target);
   let image = await Jimp.read(target.absolutePath);
 
@@ -328,7 +325,7 @@ api.resize = async (opts: ResizeOpts) => {
   };
 };
 
-api.rm = async (opts: RmOpts) => {
+export async function rm(opts: RmOpts) {
   const removed: string[] = [];
 
   for (const hash of opts.targets) {
@@ -340,13 +337,13 @@ api.rm = async (opts: RmOpts) => {
   return { removed };
 };
 
-api.size = async () => {
+export async function size() {
   return {
     size: 'unkown',
   };
-};
+}
 
-api.search = async (opts: SearchOpts) => {
+export async function search(opts: SearchOpts) {
   if (!opts.q || opts.q.length < 1) {
     throw new Error('errCmdParams');
   }
@@ -376,7 +373,7 @@ api.search = async (opts: SearchOpts) => {
   return { files };
 };
 
-api.tmb = async (opts: TmbOpts) => {
+export async function tmb(opts: TmbOpts) {
   const files: string[] = [];
 
   if (opts.current) {
@@ -427,7 +424,7 @@ api.tmb = async (opts: TmbOpts) => {
   };
 };
 
-api.tree = async (opts: TreeOpts) => {
+export async function tree(opts: TreeOpts) {
   if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const files = await helpers.readdir(dir.absolutePath);
@@ -442,11 +439,11 @@ api.tree = async (opts: TreeOpts) => {
   return { tree };
 };
 
-api.upload = async (
+export async function upload(
   opts: UploadOpts,
   _res: Response,
   _files?: UploadedFile | UploadedFile[]
-) => {
+) {
   const target = helpers.decode(opts.target);
   const files = _files instanceof Array ? _files : [_files!];
 
@@ -475,7 +472,7 @@ api.upload = async (
   return { added };
 };
 
-api.zipdl = async (opts: ZipdlOpts) => {
+export async function zipdl(opts: ZipdlOpts) {
   if (!opts.targets?.length) throw new Error('errCmdParams');
 
   const firstHash = opts.targets[0];
@@ -495,11 +492,34 @@ api.zipdl = async (opts: ZipdlOpts) => {
   };
 };
 
-const LFS = function (options: Partial<Config>) {
+export default function LFS(options: Partial<Config>) {
   Object.assign(config, options);
   Object.assign(helpers.config, config);
+}
+
+// Create api object for backward compatibility
+export const api = {
+  archive,
+  dim,
+  duplicate,
+  extract,
+  file,
+  get,
+  info,
+  ls,
+  mkdir,
+  mkfile,
+  open,
+  parents,
+  paste,
+  put,
+  rename,
+  resize,
+  rm,
+  size,
+  search,
+  tmb,
+  tree,
+  upload,
+  zipdl,
 };
-
-(LFS as any).api = api;
-
-export = LFS;

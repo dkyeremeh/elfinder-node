@@ -1,13 +1,13 @@
 import express, { Request, Response, Router } from 'express';
 import * as path from 'path';
 import * as busboy from 'express-busboy';
-import LFS = require('./lfs');
+import LFS, { api } from './lfs';
 import { notImplementedError } from './utils';
-import { filepath } from './lfs.utils';
+import { filepath, tmbfile } from './lfs.utils';
 import { VolumeRoot } from './types';
 
 const router: Router = express.Router();
-const connector = (LFS as any).api;
+const connector = api as any;
 
 export = function (roots: VolumeRoot[]): Router {
   const volumes = roots.map((r) => r.path);
@@ -47,7 +47,7 @@ export = function (roots: VolumeRoot[]): Router {
   });
 
   router.get('/tmb/:filename', (req: Request, res: Response) => {
-    res.sendFile(connector.tmbfile(req.params.filename));
+    res.sendFile(tmbfile(req.params.filename));
   });
 
   router.get('/file/:volume/*', (req: Request, res: Response) => {
