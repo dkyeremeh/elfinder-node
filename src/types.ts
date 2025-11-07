@@ -21,7 +21,7 @@ export interface FileInfo {
   isdir: boolean;
   dirs?: 1;
   options?: {
-    disabled: string[];
+    disabled?: string[];
     archivers: {
       create: string[];
       extract: string[];
@@ -74,7 +74,6 @@ export type DriverSetup = <T extends Config>(
 
 export interface VolumeRoot {
   driver: DriverSetup;
-  path: string;
   URL: string;
   permissions?: {
     read: number;
@@ -105,7 +104,7 @@ export interface FileItem {
 
 export interface Config {
   /** List of disabled commands */
-  disabled: string[];
+  disabled?: string[];
   icon: string;
   /** Base url for public links */
   URL: string;

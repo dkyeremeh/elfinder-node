@@ -7,11 +7,17 @@ import { Response } from 'express';
 import * as helpers from './lfs.utils';
 import { DriverSetup, FileInfo } from './types';
 
+const defaultOptions = {
+  disabled: ['chmod', 'size'],
+  icon: 'elfinder-navbar-root-local',
+  permissions: { read: 1, write: 1, locked: 0 },
+};
+
 const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
   const config = {
-    disabled: ['chmod', 'size'],
-    icon: 'elfinder-navbar-root-local',
-    permissions: { read: 1, write: 1, locked: 0 },
+    tmbroot: path.resolve(options.path!, '.tmb'),
+    ...defaultOptions,
+    ...options,
   } as helpers.LFSConfig;
 
   config.acl = function (filePath: string) {
@@ -25,8 +31,6 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       }
     );
   };
-
-  Object.assign(config, options);
 
   return {
     config,
@@ -56,10 +60,13 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         const name = fil + '(copy)' + ext;
         const base = path.dirname(_t.absolutePath);
 
-        return helpers.copy({
-          src: _t.absolutePath,
-          dst: path.join(base, name),
-        }, config);
+        return helpers.copy(
+          {
+            src: _t.absolutePath,
+            dst: path.join(base, name),
+          },
+          config
+        );
       });
 
       const info = await Promise.all(tasks);
@@ -225,10 +232,13 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         }
 
         const action = opts.cut == 1 ? helpers.move : helpers.copy;
-        return action({
-          src: info.absolutePath,
-          dst: path.join(dest.absolutePath, name),
-        }, config);
+        return action(
+          {
+            src: info.absolutePath,
+            dst: path.join(dest.absolutePath, name),
+          },
+          config
+        );
       });
 
       const results = await Promise.all(tasks);
@@ -265,10 +275,13 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       if (!opts.target) throw new Error('errCmdParams');
       const dir = helpers.decode(opts.target, config);
       const dirname = path.dirname(dir.absolutePath);
-      return helpers.move({
-        src: dir.absolutePath,
-        dst: path.join(dirname, opts.name),
-      }, config);
+      return helpers.move(
+        {
+          src: dir.absolutePath,
+          dst: path.join(dirname, opts.name),
+        },
+        config
+      );
     },
 
     resize: async function (opts) {
@@ -437,11 +450,14 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         }
         dst = path.join(dst, filename);
 
-        return helpers.move({
-          dst,
-          src: file.file,
-          upload: true,
-        }, config);
+        return helpers.move(
+          {
+            dst,
+            src: file.file,
+            upload: true,
+          },
+          config
+        );
       });
 
       const info = await Promise.all(tasks);

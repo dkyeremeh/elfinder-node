@@ -78,95 +78,9 @@ permissions: function (path) {
 
 As of version 2.0, elfinder-node supports custom volume drivers, allowing you to implement support for different storage backends (FTP, S3, SSH, etc.). Each volume can have its own driver configured independently.
 
-### Important Note on Driver Architecture
-
-The current implementation uses a **shared global configuration** for LocalFileStorage. This means:
-
-- The `elfinder()` function initializes LFS with configuration for ALL volumes
-- This allows cross-volume operations (copy/paste between different volumes)
-- Each volume can still specify `LocalFileStorage` as its driver
-- Custom drivers can be implemented per-volume as needed
-
 ### Creating a Custom Driver
 
-A driver must implement the `VolumeDriver` interface with all required methods:
-
-```typescript
-import { VolumeDriver, LocalFileStorage } from 'elfinder-node';
-
-// You can extend the LocalFileStorage or create from scratch
-const MyCustomDriver: VolumeDriver = {
-  async archive(opts) {
-    /* ... */
-  },
-  async dim(opts) {
-    /* ... */
-  },
-  async duplicate(opts) {
-    /* ... */
-  },
-  async extract(opts) {
-    /* ... */
-  },
-  async file(opts, res) {
-    /* ... */
-  },
-  async get(opts) {
-    /* ... */
-  },
-  async info() {
-    /* ... */
-  },
-  async ls(opts) {
-    /* ... */
-  },
-  async mkdir(opts) {
-    /* ... */
-  },
-  async mkfile(opts) {
-    /* ... */
-  },
-  async open(opts) {
-    /* ... */
-  },
-  async parents(opts) {
-    /* ... */
-  },
-  async paste(opts) {
-    /* ... */
-  },
-  async put(opts) {
-    /* ... */
-  },
-  async rename(opts) {
-    /* ... */
-  },
-  async resize(opts) {
-    /* ... */
-  },
-  async rm(opts) {
-    /* ... */
-  },
-  async size() {
-    /* ... */
-  },
-  async search(opts) {
-    /* ... */
-  },
-  async tmb(opts) {
-    /* ... */
-  },
-  async tree(opts) {
-    /* ... */
-  },
-  async upload(opts, res, files) {
-    /* ... */
-  },
-  async zipdl(opts) {
-    /* ... */
-  },
-};
-```
+````
 
 ### Using Custom Drivers
 
@@ -190,26 +104,7 @@ const roots = [
 ];
 
 app.use('/connector', elfinder(roots));
-```
-
-### Driver Registry
-
-For advanced use cases, you can access the driver registry directly:
-
-```javascript
-const { driverRegistry, LocalFileStorage } = require('elfinder-node');
-
-// Set a driver for a specific volume after initialization
-driverRegistry.setDriver(0, LocalFileStorage);
-
-// Get the driver for a volume
-const driver = driverRegistry.getDriver(0);
-
-// Check if a volume has a driver registered
-if (driverRegistry.hasDriver(1)) {
-  // Volume 1 has a driver registered
-}
-```
+````
 
 ## Contributing
 

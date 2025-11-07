@@ -22,6 +22,11 @@ export type LFSConfig = Config & {
   tmbroot: string;
 };
 
+export type LFSConfigInput = Partial<Config> & {
+  path: string;
+  tmbroot?: string;
+};
+
 export const compress = async (
   files: string[],
   dest: string,
@@ -60,7 +65,10 @@ export const compress = async (
   });
 };
 
-export const copy = async (opts: CopyMoveOptions, config: LFSConfig): Promise<CopyMoveResult> => {
+export const copy = async (
+  opts: CopyMoveOptions,
+  config: LFSConfig
+): Promise<CopyMoveResult> => {
   const fileExists = await fs.pathExists(opts.dst);
   if (fileExists) throw new Error('Destination exists');
 
@@ -128,11 +136,6 @@ export const extract = async (
   return files;
 };
 
-export const filepath = (volume: number, filename: string, config: LFSConfig): string | null => {
-  if (volume < 0 || volume > 0) return null;
-  return path.join(config.path, path.normalize(filename));
-};
-
 export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
   const parsedInfo = parse(p, config);
   if (parsedInfo.volume < 0) throw new Error('Volume not found');
@@ -156,6 +159,7 @@ export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
 
   if (r.mime.indexOf('image/') === 0) {
     const filename = encode(p, config);
+    console.log('bbb', config.tmbroot, filename);
     const tmbPath = path.join(config.tmbroot, filename + '.png');
     if (await fs.pathExists(tmbPath)) {
       r.tmb = filename + '.png';
@@ -209,7 +213,10 @@ export const init = async (config: LFSConfig): Promise<FileInfo[]> => {
   return [volumeInfo];
 };
 
-export const move = async (opts: CopyMoveOptions, config: LFSConfig): Promise<CopyMoveResult> => {
+export const move = async (
+  opts: CopyMoveOptions,
+  config: LFSConfig
+): Promise<CopyMoveResult> => {
   if (await fs.pathExists(opts.dst)) {
     throw new Error('Destination exists');
   }
@@ -256,10 +263,6 @@ export const suffix = (name: string, suff: string): string => {
   const ext = path.extname(name);
   const fil = path.basename(name, ext);
   return fil + suff + ext;
-};
-
-export const tmbfile = (filename: string, config: LFSConfig): string => {
-  return path.join(config.tmbroot, filename);
 };
 
 export const volume = (p: string, config: LFSConfig): number => {

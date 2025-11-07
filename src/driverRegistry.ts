@@ -53,6 +53,40 @@ class DriverRegistry {
   }
 
   /**
+   * Parse volume index from request parameters
+   * @param params Request parameters that may contain target, current, or other volume identifiers
+   * @returns The volume index, or 0 if not determinable
+   */
+  private parseVolumeIndex(params: any): number {
+    // Try to extract volume from various possible parameters
+    const target = params.target || params.current || params.dst;
+
+    if (target && typeof target === 'string') {
+      try {
+        // Parse volume from hash format: v0_... or v1_...
+        if (target.length >= 4 && target[0] === 'v' && target[2] === '_') {
+          return parseInt(target[1]);
+        }
+      } catch (e) {
+        // If decode fails, fall back to default volume
+      }
+    }
+
+    // Default to first volume
+    return 0;
+  }
+
+  /**
+   * Get the driver for a request based on its parameters
+   * @param params Request parameters that may contain volume identifiers
+   * @returns The driver for the target volume
+   */
+  getDriverForRequest(params: any): VolumeDriver {
+    const volumeIndex = this.parseVolumeIndex(params);
+    return this.getDriver(volumeIndex);
+  }
+
+  /**
    * Clear all registered drivers
    */
   clear(): void {
