@@ -16,9 +16,17 @@ import {
   CopyMoveResult,
 } from './types';
 
-export const config: Partial<Config> = {};
+export type LFSConfig = Config & {
+  init?: Function;
+  path: string;
+  tmbroot: string;
+};
 
-export const compress = async (files: string[], dest: string): Promise<boolean> => {
+export const compress = async (
+  files: string[],
+  dest: string,
+  config: LFSConfig
+): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(dest);
     const archive = archiver.default('zip', {
@@ -37,7 +45,7 @@ export const compress = async (files: string[], dest: string): Promise<boolean> 
     archive.pipe(output);
 
     _.each(files, (file) => {
-      const target = decode(file);
+      const target = decode(file, config);
       if (fs.lstatSync(target.absolutePath).isDirectory()) {
         const name = path.basename(target.absolutePath);
         archive.directory(path.normalize(target.absolutePath + path.sep), name);
@@ -52,20 +60,20 @@ export const compress = async (files: string[], dest: string): Promise<boolean> 
   });
 };
 
-export const copy = async (opts: CopyMoveOptions): Promise<CopyMoveResult> => {
+export const copy = async (opts: CopyMoveOptions, config: LFSConfig): Promise<CopyMoveResult> => {
   const fileExists = await fs.pathExists(opts.dst);
   if (fileExists) throw new Error('Destination exists');
 
   await fs.copy(opts.src, opts.dst);
-  const infoResult = await info(opts.dst);
+  const infoResult = await info(opts.dst, config);
 
   return {
     added: [infoResult],
-    changed: [encode(path.dirname(opts.dst))],
+    changed: [encode(path.dirname(opts.dst), config)],
   };
 };
 
-export const decode = (dir: string): DecodedPath => {
+export const decode = (dir: string, config: LFSConfig): DecodedPath => {
   let root: string, name: string, volume: number;
 
   if (!dir || dir.length < 4) throw Error('Invalid Path');
@@ -84,7 +92,7 @@ export const decode = (dir: string): DecodedPath => {
   });
 
   name = path.basename(relative);
-  root = config.volumes![volume];
+  root = config.path;
 
   return {
     volume,
@@ -95,8 +103,8 @@ export const decode = (dir: string): DecodedPath => {
   };
 };
 
-export const encode = (dir: string): string => {
-  const parsedInfo = parse(dir);
+export const encode = (dir: string, config: LFSConfig): string => {
+  const parsedInfo = parse(dir, config);
   const relative = lz
     .compress(parsedInfo.path, {
       outputEncoding: 'Base64',
@@ -109,7 +117,10 @@ export const encode = (dir: string): string => {
   return 'v' + parsedInfo.volume + '_' + relative;
 };
 
-export const extract = async (source: string, dest: string): Promise<string[]> => {
+export const extract = async (
+  source: string,
+  dest: string
+): Promise<string[]> => {
   const zip = new Zip(source);
   const files = zip.getEntries().map((file: any) => file.entryName);
   const extractAsync = promisify(zip.extractAllToAsync.bind(zip));
@@ -117,13 +128,13 @@ export const extract = async (source: string, dest: string): Promise<string[]> =
   return files;
 };
 
-export const filepath = (volume: number, filename: string): string | null => {
-  if (volume < 0 || volume > 2) return null;
-  return path.join(config.volumes![volume], path.normalize(filename));
+export const filepath = (volume: number, filename: string, config: LFSConfig): string | null => {
+  if (volume < 0 || volume > 0) return null;
+  return path.join(config.path, path.normalize(filename));
 };
 
-export const info = async (p: string): Promise<FileInfo> => {
-  const parsedInfo = parse(p);
+export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
+  const parsedInfo = parse(p, config);
   if (parsedInfo.volume < 0) throw new Error('Volume not found');
 
   const stat = await fs.stat(p);
@@ -131,8 +142,10 @@ export const info = async (p: string): Promise<FileInfo> => {
   const r: FileInfo = {
     name: path.basename(p),
     size: stat.size,
-    hash: encode(p),
-    mime: stat.isDirectory() ? 'directory' : (mime.lookup(p) || 'application/binary'),
+    hash: encode(p, config),
+    mime: stat.isDirectory()
+      ? 'directory'
+      : mime.lookup(p) || 'application/binary',
     ts: Math.floor(stat.mtime.getTime() / 1000),
     volumeid: 'v' + parsedInfo.volume + '_',
     read: 1,
@@ -142,8 +155,8 @@ export const info = async (p: string): Promise<FileInfo> => {
   };
 
   if (r.mime.indexOf('image/') === 0) {
-    const filename = encode(p);
-    const tmbPath = path.join(config.tmbroot!, filename + '.png');
+    const filename = encode(p, config);
+    const tmbPath = path.join(config.tmbroot, filename + '.png');
     if (await fs.pathExists(tmbPath)) {
       r.tmb = filename + '.png';
     } else {
@@ -153,10 +166,10 @@ export const info = async (p: string): Promise<FileInfo> => {
 
   if (!parsedInfo.isRoot) {
     const parent = path.dirname(p);
-    r.phash = encode(parent);
+    r.phash = encode(parent, config);
   } else {
     r.options = {
-      disabled: config.disabled!,
+      disabled: config.disabled,
       archivers: {
         create: ['application/zip'],
         extract: ['application/zip'],
@@ -164,14 +177,14 @@ export const info = async (p: string): Promise<FileInfo> => {
           'application/zip': 'zip',
         },
       },
-      url: config.roots![parsedInfo.volume].URL,
+      url: config.URL,
     };
-    if (config.volumeicons![parsedInfo.volume]) {
-      r.options.csscls = config.volumeicons![parsedInfo.volume];
+    if (config.icon) {
+      r.options.csscls = config.icon;
     }
   }
 
-  const acl = config.acl!(p);
+  const acl = config.acl(p);
   r.read = acl.read;
   r.write = acl.write;
   r.locked = acl.locked;
@@ -190,34 +203,29 @@ export const info = async (p: string): Promise<FileInfo> => {
   return r;
 };
 
-export const init = async (): Promise<FileInfo[]> => {
-  const tasks = config.volumes!.map((volume) => info(volume));
-  const results = await Promise.all(tasks);
-
-  _.each(results, (result) => {
-    result.phash = '';
-  });
-
-  return results;
+export const init = async (config: LFSConfig): Promise<FileInfo[]> => {
+  const volumeInfo = await info(config.path, config);
+  volumeInfo.phash = '';
+  return [volumeInfo];
 };
 
-export const move = async (opts: CopyMoveOptions): Promise<CopyMoveResult> => {
+export const move = async (opts: CopyMoveOptions, config: LFSConfig): Promise<CopyMoveResult> => {
   if (await fs.pathExists(opts.dst)) {
     throw new Error('Destination exists');
   }
 
   await fs.move(opts.src, opts.dst);
-  const infoResult = await info(opts.dst);
+  const infoResult = await info(opts.dst, config);
 
   return {
     added: [infoResult],
-    removed: opts.upload ? [] : [encode(opts.src)],
+    removed: opts.upload ? [] : [encode(opts.src, config)],
   };
 };
 
-export const parse = (p: string): ParsedPath => {
-  const v = volume(p);
-  const root = config.volumes![v] || '';
+export const parse = (p: string, config: LFSConfig): ParsedPath => {
+  const v = volume(p, config);
+  const root = config.path || '';
   let relative = p.substr(root.length, p.length - root.length);
   if (relative.indexOf(path.sep) !== 0) relative = path.sep + relative;
 
@@ -250,16 +258,14 @@ export const suffix = (name: string, suff: string): string => {
   return fil + suff + ext;
 };
 
-export const tmbfile = (filename: string): string => {
-  return path.join(config.tmbroot!, filename);
+export const tmbfile = (filename: string, config: LFSConfig): string => {
+  return path.join(config.tmbroot, filename);
 };
 
-export const volume = (p: string): number => {
-  for (let i = 0; i < config.volumes!.length; i++) {
-    if (i > 9) return -1;
-    if (p.indexOf(config.volumes![i]) === 0) {
-      return i;
-    }
+export const volume = (p: string, config: LFSConfig): number => {
+  // For single volume, always return 0 if path matches
+  if (p.indexOf(config.path) === 0) {
+    return 0;
   }
   return -1;
 };

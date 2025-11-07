@@ -36,7 +36,8 @@ export interface FileInfo {
   };
 }
 
-export interface VolumeDriver {
+export type VolumeDriver = {
+  config: any;
   archive: (opts: ArchiveOpts) => Promise<any>;
   dim: (opts: DimOpts) => Promise<any>;
   duplicate: (opts: DuplicateOpts) => Promise<any>;
@@ -58,21 +59,28 @@ export interface VolumeDriver {
   search: (opts: SearchOpts) => Promise<any>;
   tmb: (opts: TmbOpts) => Promise<any>;
   tree: (opts: TreeOpts) => Promise<any>;
-  upload: (opts: UploadOpts, res: any, files?: UploadedFile | UploadedFile[]) => Promise<any>;
+  upload: (
+    opts: UploadOpts,
+    res: Response,
+    files?: UploadedFile | UploadedFile[]
+  ) => Promise<any>;
   zipdl: (opts: ZipdlOpts) => Promise<any>;
-}
+  [key: string]: any;
+};
+
+export type DriverSetup = <T extends Config>(
+  config: Partial<T>
+) => VolumeDriver;
 
 export interface VolumeRoot {
-  driver: VolumeDriver;
+  driver: DriverSetup;
   path: string;
   URL: string;
-  permissions?:
-    | {
-        read: number;
-        write: number;
-        locked: number;
-      }
-    | ((path: string) => { read: number; write: number; locked: number });
+  permissions?: {
+    read: number;
+    write: number;
+    locked: number;
+  };
 }
 
 export interface DecodedPath {
@@ -96,13 +104,12 @@ export interface FileItem {
 }
 
 export interface Config {
-  router?: string;
+  /** List of disabled commands */
   disabled: string[];
-  volumeicons: string[];
-  volumes: string[];
-  roots: VolumeRoot[];
-  tmbroot: string;
-  init?: () => void;
+  icon: string;
+  /** Base url for public links */
+  URL: string;
+  permissions: { read: number; write: number; locked: number };
   acl: (path: string) => { read: number; write: number; locked: number };
 }
 

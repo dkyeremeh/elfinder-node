@@ -1,27 +1,16 @@
 import express, { Request, Response, Router } from 'express';
-import * as path from 'path';
 import * as busboy from 'express-busboy';
-import LFS, { LocalFileSystemDriver } from './lfs';
+import LFS from './lfs';
 import { notImplementedError, getTargetVolume } from './utils';
 import { filepath, tmbfile } from './lfs.utils';
 import { VolumeRoot, VolumeDriver } from './types';
-import { driverRegistry } from './driver-registry';
+import { driverRegistry } from './driverRegistry';
 
 export type { VolumeDriver, VolumeRoot };
 
 const router: Router = express.Router();
 
 export function elfinder(roots: VolumeRoot[]): Router {
-  const volumes = roots.map((r) => r.path);
-  const tmbroot = path.resolve(volumes[0], '.tmb');
-
-  // Initialize LFS configuration (needed for lfs.utils helpers)
-  LFS({
-    roots,
-    volumes,
-    tmbroot,
-  });
-
   // Initialize the driver registry with all volumes
   driverRegistry.initialize(roots);
 
@@ -76,11 +65,15 @@ export function elfinder(roots: VolumeRoot[]): Router {
   });
 
   router.get('/tmb/:filename', (req: Request, res: Response) => {
-    res.sendFile(tmbfile(req.params.filename));
+    // Get the first driver's config for thumbnail path
+    const driver = driverRegistry.getDriver(0);
+    res.sendFile(tmbfile(req.params.filename, driver.config));
   });
 
   router.get('/file/:volume/*', (req: Request, res: Response) => {
-    const file = filepath(parseInt(req.params.volume), req.params['0']);
+    const volumeIndex = parseInt(req.params.volume);
+    const driver = driverRegistry.getDriver(volumeIndex);
+    const file = filepath(volumeIndex, req.params['0'], driver.config);
     if (file) res.sendFile(file);
     else {
       res.status(404);
@@ -91,4 +84,4 @@ export function elfinder(roots: VolumeRoot[]): Router {
   return router;
 }
 
-export { LFS as LocalFileStorage, LFS, LocalFileSystemDriver, driverRegistry };
+export { LFS as LocalFileStorage, LFS, driverRegistry };

@@ -5,7 +5,7 @@
  * that implements a different storage backend (e.g., FTP, S3, SSH, etc.)
  */
 
-import { VolumeDriver, LocalFileSystemDriver } from '../src/elfinder';
+import { VolumeDriver, LocalFileStorage } from '../src/elfinder';
 
 /**
  * Example: Custom S3 Driver (skeleton implementation)
@@ -153,13 +153,13 @@ export const CustomS3Driver: VolumeDriver = {
 };
 
 /**
- * Example: Extending the LocalFileSystemDriver
+ * Example: Extending the LocalFileStorage
  *
  * You can also extend the built-in driver and only override
  * specific methods that need custom behavior
  */
 export const CustomLocalDriver: VolumeDriver = {
-  ...LocalFileSystemDriver,
+  ...LocalFileStorage,
 
   // Override only the methods you want to customize
   async open(opts) {
@@ -167,7 +167,7 @@ export const CustomLocalDriver: VolumeDriver = {
     // Add custom logic here (e.g., logging, access control)
 
     // Call the original implementation
-    return LocalFileSystemDriver.open(opts);
+    return LocalFileStorage.open(opts);
   },
 
   async upload(opts, res: any, files?: any) {
@@ -175,7 +175,7 @@ export const CustomLocalDriver: VolumeDriver = {
     // Add custom logic here (e.g., virus scanning, file validation)
 
     // Call the original implementation
-    return LocalFileSystemDriver.upload(opts, res, files);
+    return LocalFileStorage.upload(opts, res, files);
   },
 };
 
@@ -200,7 +200,7 @@ const roots = [
     path: 's3://my-bucket/folder',
   },
   {
-    // No driver specified - uses LocalFileSystemDriver by default
+    // No driver specified - uses LocalFileStorage by default
     URL: '/default/',
     path: '/path/to/another/dir',
   },

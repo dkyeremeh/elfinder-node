@@ -1,5 +1,3 @@
-import { decode } from './lfs.utils';
-
 export const notImplementedError = (cmd: string): Error =>
   new Error(`'${cmd}' is not implemented by volume driver`);
 
@@ -14,8 +12,10 @@ export function getTargetVolume(params: any): number {
 
   if (target && typeof target === 'string') {
     try {
-      const decoded = decode(target);
-      return decoded.volume;
+      // Parse volume from hash format: v0_... or v1_...
+      if (target.length >= 4 && target[0] === 'v' && target[2] === '_') {
+        return parseInt(target[1]);
+      }
     } catch (e) {
       // If decode fails, fall back to default volume
     }

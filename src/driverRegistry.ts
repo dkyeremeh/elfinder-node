@@ -14,7 +14,9 @@ class DriverRegistry {
     this.drivers.clear();
 
     roots.forEach((root, index) => {
-      this.drivers.set(index, root.driver);
+      // Call the driver setup function to create the driver instance
+      const driverInstance = root.driver(root);
+      this.drivers.set(index, driverInstance);
     });
   }
 
