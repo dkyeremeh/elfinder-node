@@ -36,7 +36,34 @@ export interface FileInfo {
   };
 }
 
+export interface VolumeDriver {
+  archive: (opts: ArchiveOpts) => Promise<any>;
+  dim: (opts: DimOpts) => Promise<any>;
+  duplicate: (opts: DuplicateOpts) => Promise<any>;
+  extract: (opts: ExtractOpts) => Promise<any>;
+  file: (opts: FileOpts, res: any) => Promise<void>;
+  get: (opts: GetOpts) => Promise<any>;
+  info: () => Promise<void>;
+  ls: (opts: LsOpts) => Promise<any>;
+  mkdir: (opts: MkdirOpts) => Promise<any>;
+  mkfile: (opts: MkfileOpts) => Promise<any>;
+  open: (opts: OpenOpts) => Promise<any>;
+  parents: (opts: ParentsOpts) => Promise<any>;
+  paste: (opts: PasteOpts) => Promise<any>;
+  put: (opts: PutOpts) => Promise<any>;
+  rename: (opts: RenameOpts) => Promise<any>;
+  resize: (opts: ResizeOpts) => Promise<any>;
+  rm: (opts: RmOpts) => Promise<any>;
+  size: () => Promise<any>;
+  search: (opts: SearchOpts) => Promise<any>;
+  tmb: (opts: TmbOpts) => Promise<any>;
+  tree: (opts: TreeOpts) => Promise<any>;
+  upload: (opts: UploadOpts, res: any, files?: UploadedFile | UploadedFile[]) => Promise<any>;
+  zipdl: (opts: ZipdlOpts) => Promise<any>;
+}
+
 export interface VolumeRoot {
+  driver: VolumeDriver;
   path: string;
   URL: string;
   permissions?:

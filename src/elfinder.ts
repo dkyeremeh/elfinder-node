@@ -1,27 +1,29 @@
 import express, { Request, Response, Router } from 'express';
 import * as path from 'path';
 import * as busboy from 'express-busboy';
-import LFS, * as api from './lfs';
-import { notImplementedError } from './utils';
+import LFS, { LocalFileSystemDriver } from './lfs';
+import { notImplementedError, getTargetVolume } from './utils';
 import { filepath, tmbfile } from './lfs.utils';
-import { VolumeRoot } from './types';
+import { VolumeRoot, VolumeDriver } from './types';
+import { driverRegistry } from './driver-registry';
 
-type Connector = typeof api & {
-  [key: string]: Function;
-};
+export type { VolumeDriver, VolumeRoot };
 
 const router: Router = express.Router();
-const connector = api as Connector;
 
 export function elfinder(roots: VolumeRoot[]): Router {
   const volumes = roots.map((r) => r.path);
   const tmbroot = path.resolve(volumes[0], '.tmb');
 
+  // Initialize LFS configuration (needed for lfs.utils helpers)
   LFS({
     roots,
     volumes,
     tmbroot,
   });
+
+  // Initialize the driver registry with all volumes
+  driverRegistry.initialize(roots);
 
   busboy.extend(router, {
     upload: true,
@@ -30,8 +32,17 @@ export function elfinder(roots: VolumeRoot[]): Router {
   router.get('/', async (req: Request, res: Response) => {
     const cmd = req.query.cmd as string;
     try {
-      if (!connector[cmd]) throw notImplementedError(cmd);
-      const result = await connector[cmd](req.query, res);
+      // Determine which volume this command targets
+      const volumeIndex = getTargetVolume(req.query);
+      const driver = driverRegistry.getDriver(volumeIndex);
+
+      // Check if the driver implements this command
+      const driverMethod = driver[cmd as keyof typeof driver];
+      if (!driverMethod || typeof driverMethod !== 'function') {
+        throw notImplementedError(cmd);
+      }
+
+      const result = await driverMethod(req.query as any, res);
       if (result) res.json(result);
     } catch (e: any) {
       console.error(req.query, e);
@@ -42,9 +53,18 @@ export function elfinder(roots: VolumeRoot[]): Router {
   router.post('/', async (req: Request, res: Response) => {
     const cmd = req.body.cmd as string;
     try {
-      if (!connector[cmd]) throw notImplementedError(cmd);
-      const result = await connector[cmd](
-        req.body,
+      // Determine which volume this command targets
+      const volumeIndex = getTargetVolume(req.body);
+      const driver = driverRegistry.getDriver(volumeIndex);
+
+      // Check if the driver implements this command
+      const driverMethod = driver[cmd as keyof typeof driver];
+      if (!driverMethod || typeof driverMethod !== 'function') {
+        throw notImplementedError(cmd);
+      }
+
+      const result = await driverMethod(
+        req.body as any,
         res,
         req.files?.['upload[]']
       );
@@ -71,4 +91,4 @@ export function elfinder(roots: VolumeRoot[]): Router {
   return router;
 }
 
-export { LFS as LocalFileStorage, LFS };
+export { LFS as LocalFileStorage, LFS, LocalFileSystemDriver, driverRegistry };

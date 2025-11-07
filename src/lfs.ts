@@ -30,6 +30,7 @@ import {
   TreeOpts,
   UploadOpts,
   ZipdlOpts,
+  VolumeDriver,
 } from './types';
 
 const config: Partial<Config> = {
@@ -496,3 +497,33 @@ export default function LFS(options: Partial<Config>) {
   Object.assign(config, options);
   Object.assign(helpers.config, config);
 }
+
+/**
+ * Local File System driver implementation
+ * This driver handles all file operations for local filesystem volumes
+ */
+export const LocalFileSystemDriver: VolumeDriver = {
+  archive,
+  dim,
+  duplicate,
+  extract,
+  file,
+  get,
+  info,
+  ls,
+  mkdir,
+  mkfile,
+  open,
+  parents,
+  paste,
+  put,
+  rename,
+  resize,
+  rm,
+  size,
+  search,
+  tmb,
+  tree,
+  upload,
+  zipdl,
+};
