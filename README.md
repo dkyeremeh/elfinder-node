@@ -32,27 +32,29 @@ Below is a summary of how it is used:
 ```javascript
 const express = require('express');
 const app = express();
-const elFinder = require('elfinder-node');
+const { elfinder, LocalFileStorage } = require('elfinder-node');
 
 const roots = [
   {
-    driver: elFinder.LocalFileStorage,
+    driver: LocalFileStorage,
     URL: '/uploads/', //Required
     path: '/path/to/dir', //Required
     permissions: { read: 1, write: 1, lock: 0 },
   },
   {
-    driver: elFinder.LocalFileStorage,
+    driver: LocalFileStorage,
     URL: '/404/', //Required
     path: 'private', //Required
     permissions: { read: 1, write: 0, lock: 1 },
   },
 ];
 
-app.use('/connector', elFinder(roots));
+app.use('/connector', elfinder(roots));
 
 app.listen(process.env.PORT || 8000);
 ```
+
+**Note:** This package is built as CommonJS and works with both `require()` and ES Module `import` statements.
 
 ## Configuration
 

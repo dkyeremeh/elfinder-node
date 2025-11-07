@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import * as path from 'path';
 import * as busboy from 'express-busboy';
-import LFS, { api } from './lfs';
+import LFS, * as api from './lfs';
 import { notImplementedError } from './utils';
 import { filepath, tmbfile } from './lfs.utils';
 import { VolumeRoot } from './types';
@@ -9,7 +9,7 @@ import { VolumeRoot } from './types';
 const router: Router = express.Router();
 const connector = api as any;
 
-export = function (roots: VolumeRoot[]): Router {
+export function elfinder(roots: VolumeRoot[]): Router {
   const volumes = roots.map((r) => r.path);
   const tmbroot = path.resolve(volumes[0], '.tmb');
 
@@ -60,7 +60,6 @@ export = function (roots: VolumeRoot[]): Router {
   });
 
   return router;
-};
+}
 
-(module.exports as any).LocalFileStorage = LFS;
-(module.exports as any).LFS = LFS;
+export { LFS as LocalFileStorage, LFS };

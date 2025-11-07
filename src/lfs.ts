@@ -496,30 +496,3 @@ export default function LFS(options: Partial<Config>) {
   Object.assign(config, options);
   Object.assign(helpers.config, config);
 }
-
-// Create api object for backward compatibility
-export const api = {
-  archive,
-  dim,
-  duplicate,
-  extract,
-  file,
-  get,
-  info,
-  ls,
-  mkdir,
-  mkfile,
-  open,
-  parents,
-  paste,
-  put,
-  rename,
-  resize,
-  rm,
-  size,
-  search,
-  tmb,
-  tree,
-  upload,
-  zipdl,
-};

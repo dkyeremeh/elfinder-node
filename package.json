@@ -36,13 +36,14 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "rm -rf dist",
+    "build": "yarn clean && tsc",
     "build:watch": "tsc --watch",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "yarn build",
     "lint": "eslint .",
-    "serve": "nodemon tests/server.js",
-    "test:int": "npm run build && ava tests/int-tests/**/*.js",
-    "test:cov": "npm run build && c8 -r text -r json-summary  ava tests/int-tests/**/*.js"
+    "serve": "nodemon --enable-source-maps tests/server.js",
+    "test:int": "yarn build && node --enable-source-maps node_modules/.bin/ava tests/int-tests/**/*.js",
+    "test:cov": "yarn build && node --enable-source-maps node_modules/.bin/c8 -r text -r json-summary ava tests/int-tests/**/*.js"
   },
   "repository": {
     "type": "git",
