@@ -1,34 +1,43 @@
-const lz = require('lzutf8'); //Remove after decoupling
-const path = require('path'); //Remove
-const mime = require('mime-types');
-const promise = require('promise');
-const _ = require('underscore');
-const fs = require('fs-extra');
-const archiver = require('archiver');
-const Zip = require('adm-zip');
-const { promisify } = require('util');
+import * as lz from 'lzutf8';
+import * as path from 'path';
+import * as mime from 'mime-types';
+import * as _ from 'underscore';
+import * as fs from 'fs-extra';
+import * as archiver from 'archiver';
+import Zip from 'adm-zip';
+import { promisify } from 'util';
+import {
+  Config,
+  DecodedPath,
+  ParsedPath,
+  FileItem,
+  FileInfo,
+  CopyMoveOptions,
+  CopyMoveResult,
+} from './types';
 
-const config = {};
-exports.config = config;
+export const config: Partial<Config> = {};
 
-exports.compress = function (files, dest) {
-  return new promise(function (resolve, reject) {
+export const compress = async (files: string[], dest: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(dest);
-    const archive = archiver('zip', {
-      store: true, // Sets the compression method to STORE.
+    const archive = archiver.default('zip', {
+      store: true,
     });
-    // listen for all archive data to be written
-    output.on('close', function () {
+
+    output.on('close', () => {
       resolve(true);
     });
-    archive.on('error', function (err) {
+
+    archive.on('error', (err: Error) => {
       console.log(err);
       reject(err);
     });
+
     archive.pipe(output);
-    _.each(files, function (file) {
-      const target = exports.decode(file);
-      //check if target is file or dir
+
+    _.each(files, (file) => {
+      const target = decode(file);
       if (fs.lstatSync(target.absolutePath).isDirectory()) {
         const name = path.basename(target.absolutePath);
         archive.directory(path.normalize(target.absolutePath + path.sep), name);
@@ -38,27 +47,30 @@ exports.compress = function (files, dest) {
         });
       }
     });
+
     archive.finalize();
   });
 };
 
-exports.copy = async function (opts) {
-  const fileExists = await fs.exists(opts.dst);
+export const copy = async (opts: CopyMoveOptions): Promise<CopyMoveResult> => {
+  const fileExists = await fs.pathExists(opts.dst);
   if (fileExists) throw new Error('Destination exists');
 
   await fs.copy(opts.src, opts.dst);
-  const info = exports.info(opts.dst);
+  const infoResult = await info(opts.dst);
 
   return {
-    added: [info],
-    changed: [exports.encode(path.dirname(opts.dst))],
+    added: [infoResult],
+    changed: [encode(path.dirname(opts.dst))],
   };
 };
 
-exports.decode = function (dir) {
-  let root, name, volume;
+export const decode = (dir: string): DecodedPath => {
+  let root: string, name: string, volume: number;
+
   if (!dir || dir.length < 4) throw Error('Invalid Path');
-  if (dir[0] != 'v' || dir[2] != '_') throw Error('Invalid Path');
+  if (dir[0] !== 'v' || dir[2] !== '_') throw Error('Invalid Path');
+
   volume = parseInt(dir[1]);
 
   let relative = dir
@@ -70,191 +82,182 @@ exports.decode = function (dir) {
   relative = lz.decompress(relative + '==', {
     inputEncoding: 'Base64',
   });
+
   name = path.basename(relative);
-  root = config.volumes[volume];
+  root = config.volumes![volume];
+
   return {
-    volume: volume,
+    volume,
     dir: root,
     path: relative,
-    name: name,
+    name,
     absolutePath: path.join(root, relative),
   };
 };
 
-//Used by exports.info, api.opne, api.tmb, api.zipdl
-exports.encode = function (dir) {
-  const info = exports.parse(dir);
+export const encode = (dir: string): string => {
+  const parsedInfo = parse(dir);
   const relative = lz
-    .compress(info.path, {
+    .compress(parsedInfo.path, {
       outputEncoding: 'Base64',
     })
     .replace(/=+$/g, '')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '.');
-  return 'v' + info.volume + '_' + relative;
+
+  return 'v' + parsedInfo.volume + '_' + relative;
 };
 
-exports.extract = async function (source, dest) {
+export const extract = async (source: string, dest: string): Promise<string[]> => {
   const zip = new Zip(source);
-
-  const files = zip.getEntries().map((file) => file.entryName); // an array of ZipEntry records
-  const extract = promisify(zip.extractAllToAsync);
-  await extract(dest, true);
-
+  const files = zip.getEntries().map((file: any) => file.entryName);
+  const extractAsync = promisify(zip.extractAllToAsync.bind(zip));
+  await extractAsync(dest, true);
   return files;
 };
 
-exports.filepath = function (volume, filename) {
+export const filepath = (volume: number, filename: string): string | null => {
   if (volume < 0 || volume > 2) return null;
-  return path.join(config.volumes[volume], path.normalize(filename));
+  return path.join(config.volumes![volume], path.normalize(filename));
 };
 
-exports.info = function (p) {
-  return new promise(function (resolve, reject) {
-    const info = exports.parse(p);
-    if (info.volume < 0) return reject('Volume not found');
+export const info = async (p: string): Promise<FileInfo> => {
+  const parsedInfo = parse(p);
+  if (parsedInfo.volume < 0) throw new Error('Volume not found');
 
-    fs.stat(p, function (err, stat) {
-      if (err) return reject(err);
-      const r = {
-        name: path.basename(p),
-        size: stat.size,
-        hash: exports.encode(p),
-        mime: stat.isDirectory() ? 'directory' : mime.lookup(p),
-        ts: Math.floor(stat.mtime.getTime() / 1000),
-        volumeid: 'v' + info.volume + '_',
-      };
-      if (r.mime === false) {
-        r.mime = 'application/binary';
-      }
-      if (r.mime.indexOf('image/') == 0) {
-        const filename = exports.encode(p);
-        const tmbPath = path.join(config.tmbroot, filename + '.png');
-        if (fs.existsSync(tmbPath)) {
-          r.tmb = filename + '.png';
-        } else {
-          r.tmb = '1';
-        }
-      }
+  const stat = await fs.stat(p);
 
-      if (!info.isRoot) {
-        const parent = path.dirname(p);
-        // if (parent == root) parent = parent + path.sep;
-        r.phash = exports.encode(parent);
-      } else {
-        r.options = {
-          disabled: config.disabled,
-          archivers: {
-            create: ['application/zip'],
-            extract: ['application/zip'],
-            createext: {
-              'application/zip': 'zip',
-            },
-          },
-          url: config.roots[info.volume].URL,
-        };
-        if (config.volumeicons[info.volume]) {
-          r.options.csscls = config.volumeicons[info.volume];
-        }
-      }
-      const acl = config.acl(p);
-      r.read = acl.read;
-      r.write = acl.write;
-      r.locked = acl.locked;
-      //check if this folder has child.
-      r.isdir = r.mime == 'directory';
+  const r: FileInfo = {
+    name: path.basename(p),
+    size: stat.size,
+    hash: encode(p),
+    mime: stat.isDirectory() ? 'directory' : (mime.lookup(p) || 'application/binary'),
+    ts: Math.floor(stat.mtime.getTime() / 1000),
+    volumeid: 'v' + parsedInfo.volume + '_',
+    read: 1,
+    write: 1,
+    locked: 0,
+    isdir: false,
+  };
 
-      if (r.isdir) {
-        const items = fs.readdirSync(p);
-        for (let i = 0; i < items.length; i++) {
-          if (fs.lstatSync(path.join(p, items[i])).isDirectory()) {
-            r.dirs = 1;
-            break;
-          }
-        }
+  if (r.mime.indexOf('image/') === 0) {
+    const filename = encode(p);
+    const tmbPath = path.join(config.tmbroot!, filename + '.png');
+    if (await fs.pathExists(tmbPath)) {
+      r.tmb = filename + '.png';
+    } else {
+      r.tmb = '1';
+    }
+  }
+
+  if (!parsedInfo.isRoot) {
+    const parent = path.dirname(p);
+    r.phash = encode(parent);
+  } else {
+    r.options = {
+      disabled: config.disabled!,
+      archivers: {
+        create: ['application/zip'],
+        extract: ['application/zip'],
+        createext: {
+          'application/zip': 'zip',
+        },
+      },
+      url: config.roots![parsedInfo.volume].URL,
+    };
+    if (config.volumeicons![parsedInfo.volume]) {
+      r.options.csscls = config.volumeicons![parsedInfo.volume];
+    }
+  }
+
+  const acl = config.acl!(p);
+  r.read = acl.read;
+  r.write = acl.write;
+  r.locked = acl.locked;
+  r.isdir = r.mime === 'directory';
+
+  if (r.isdir) {
+    const items = await fs.readdir(p);
+    for (const item of items) {
+      if ((await fs.lstat(path.join(p, item))).isDirectory()) {
+        r.dirs = 1;
+        break;
       }
-      resolve(r);
-    });
-  });
+    }
+  }
+
+  return r;
 };
 
-exports.init = function () {
-  const tasks = [];
-  _.each(config.volumes, function (volume) {
-    tasks.push(exports.info(volume));
+export const init = async (): Promise<FileInfo[]> => {
+  const tasks = config.volumes!.map((volume) => info(volume));
+  const results = await Promise.all(tasks);
+
+  _.each(results, (result) => {
+    result.phash = '';
   });
 
-  return Promise.all(tasks).then(function (results) {
-    _.each(results, function (result) {
-      result.phash = '';
-    });
-    return promise.resolve(results);
-  });
+  return results;
 };
 
-exports.move = async function (opts) {
-  if (await fs.exists(opts.dst)) {
+export const move = async (opts: CopyMoveOptions): Promise<CopyMoveResult> => {
+  if (await fs.pathExists(opts.dst)) {
     throw new Error('Destination exists');
   }
 
   await fs.move(opts.src, opts.dst);
-  const info = await exports.info(opts.dst);
+  const infoResult = await info(opts.dst);
+
   return {
-    added: [info],
-    removed: opts.upload ? [] : [exports.encode(opts.src)],
+    added: [infoResult],
+    removed: opts.upload ? [] : [encode(opts.src)],
   };
 };
 
-//Used by exports.encode & exports.info
-exports.parse = function (p) {
-  const v = exports.volume(p);
-  const root = config.volumes[v] || '';
+export const parse = (p: string): ParsedPath => {
+  const v = volume(p);
+  const root = config.volumes![v] || '';
   let relative = p.substr(root.length, p.length - root.length);
-  if (!relative.indexOf(path.sep) == 0) relative = path.sep + relative;
+  if (relative.indexOf(path.sep) !== 0) relative = path.sep + relative;
+
   return {
     volume: v,
     dir: root,
     path: relative,
-    isRoot: relative == path.sep,
+    isRoot: relative === path.sep,
   };
 };
 
-/**
- * dir: absolute path
- */
-exports.readdir = function (dir) {
-  return new promise(function (resolve, reject) {
-    fs.readdir(dir, function (err, items) {
-      if (err) return reject(err);
-      const files = [];
-      _.each(items, function (item) {
-        const info = fs.lstatSync(path.join(dir, item));
-        files.push({
-          name: item,
-          isdir: info.isDirectory(),
-        });
-      });
-      resolve(files);
+export const readdir = async (dir: string): Promise<FileItem[]> => {
+  const items = await fs.readdir(dir);
+  const files: FileItem[] = [];
+
+  for (const item of items) {
+    const itemInfo = await fs.lstat(path.join(dir, item));
+    files.push({
+      name: item,
+      isdir: itemInfo.isDirectory(),
     });
-  });
+  }
+
+  return files;
 };
 
-exports.suffix = function (name, suff) {
+export const suffix = (name: string, suff: string): string => {
   const ext = path.extname(name);
   const fil = path.basename(name, ext);
   return fil + suff + ext;
 };
 
-exports.tmbfile = function (filename) {
-  return path.join(config.tmbroot, filename);
+export const tmbfile = (filename: string): string => {
+  return path.join(config.tmbroot!, filename);
 };
 
-//Used by exports.parse & config.acl
-exports.volume = function (p) {
-  for (let i = 0; i < config.volumes.length; i++) {
+export const volume = (p: string): number => {
+  for (let i = 0; i < config.volumes!.length; i++) {
     if (i > 9) return -1;
-    if (p.indexOf(config.volumes[i]) == 0) {
+    if (p.indexOf(config.volumes![i]) === 0) {
       return i;
     }
   }

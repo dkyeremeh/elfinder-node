@@ -81,15 +81,13 @@ There is more work to be done to make this project great. View the [ROADMAP](/RO
 Most of the work was done by [@quantv](https://github.com/quantv)
 
 
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-### Common Problems & Solutions When Setting Up elfinder-node (Windows/Node.js)
+## Common Problems & Solutions on Windows/Node.js)
 
 #### 1. Setting up connectors and file paths
 - **Problem:** Issues with `target` hashes, root paths, and connector URLs (especially on Windows).
 - **Solution:** Double-check your connector configuration (`roots`, `path`, `URL`) in the backend. Ensure paths use correct slashes (`\` for Windows, `/` for Linux). For initial blank targets, patch to use the correct hash (e.g., `v0_Lw` for `/` root).
 
-#### 2. "The string to be encoded contains characters outside of the Latin1 range."
+### 2. "The string to be encoded contains characters outside of the Latin1 range."
 - **Problem:** Base64 encoding/decoding fails with non-Latin1 strings (Unicode paths, etc.).
 - **Solution:** Replace uses of the `base-64` npm package with Node.js `Buffer` for base64 encoding/decoding in `lfs.utils.js`:
   ```js
@@ -100,7 +98,7 @@ Most of the work was done by [@quantv](https://github.com/quantv)
   ```
   This works for all Unicode file paths.
 
-#### 3. Search fails: "TypeError: fs.walk is not a function"
+### 3. Search fails: "TypeError: fs.walk is not a function"
 - **Problem:** elfinder-node's search uses the deprecated `fs.walk` API, which is not present in recent `fs-extra`.
 - **Solution:** Replace the `api.search` implementation in `LocalFileStorage.js` with a custom async recursive function using `fs.readdir` and `fs.stat`:
   ```js
@@ -110,7 +108,7 @@ Most of the work was done by [@quantv](https://github.com/quantv)
   ```
   This removes the dependency on `fs.walk` and works for all directory trees.
 
-#### General Tip
+### General Tip
 - Always check your Node.js version and your dependencies (`fs-extra`, etc.).
 - If you update elfinder-node, re-apply these fixes as needed.
 

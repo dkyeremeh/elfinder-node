@@ -1,15 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const path = require('path');
-const LFS = require('./lfs');
-const connector = LFS.api;
+import express, { Request, Response, Router } from 'express';
+import * as path from 'path';
+import * as busboy from 'express-busboy';
+import LFS = require('./lfs');
+import { notImplementedError } from './utils';
+import { filepath } from './lfs.utils';
+import { VolumeRoot } from './types';
 
-//Configure busboy
-const busboy = require('express-busboy');
-const { notImplementedError } = require('./utils');
-const { filepath } = require('./lfs.utils');
+const router: Router = express.Router();
+const connector = (LFS as any).api;
 
-module.exports = function (roots) {
+export = function (roots: VolumeRoot[]): Router {
   const volumes = roots.map((r) => r.path);
   const tmbroot = path.resolve(volumes[0], '.tmb');
 
@@ -23,40 +23,35 @@ module.exports = function (roots) {
     upload: true,
   });
 
-  router.get('/', async function (req, res) {
-    const cmd = req.query.cmd;
+  router.get('/', async (req: Request, res: Response) => {
+    const cmd = req.query.cmd as string;
     try {
       if (!connector[cmd]) throw notImplementedError(cmd);
       const result = await connector[cmd](req.query, res);
       if (result) res.json(result);
-    } catch (e) {
+    } catch (e: any) {
       console.log(e);
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.post('/', async function (req, res) {
-    const cmd = req.body.cmd;
+  router.post('/', async (req: Request, res: Response) => {
+    const cmd = req.body.cmd as string;
     try {
       if (!connector[cmd]) throw notImplementedError(cmd);
-      const result = await connector[cmd](
-        req.body,
-        res,
-        req.files?.['upload[]']
-      );
+      const result = await connector[cmd](req.body, res, req.files?.['upload[]']);
       if (result) res.json(result);
-    } catch (e) {
+    } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.get('/tmb/:filename', function (req, res) {
+  router.get('/tmb/:filename', (req: Request, res: Response) => {
     res.sendFile(connector.tmbfile(req.params.filename));
   });
 
-  // Fallback file access in case URL is not defined
-  router.get('/file/:volume/*', function (req, res) {
-    const file = filepath(req.params.volume, req.params['0']);
+  router.get('/file/:volume/*', (req: Request, res: Response) => {
+    const file = filepath(parseInt(req.params.volume), req.params['0']);
     if (file) res.sendFile(file);
     else {
       res.status(404);
@@ -67,5 +62,5 @@ module.exports = function (roots) {
   return router;
 };
 
-module.exports.LocalFileStorage = LFS;
-module.exports.LFS = LFS;
+(module.exports as any).LocalFileStorage = LFS;
+(module.exports as any).LFS = LFS;

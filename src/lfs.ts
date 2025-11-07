@@ -1,25 +1,24 @@
-/* eslint-disable no-unused-vars */
-const path = require('path'); //Remove
-const mime = require('mime-types');
-const promise = require('promise');
-const _ = require('underscore');
-const Jimp = require('jimp');
-const fs = require('fs-extra');
+import * as path from 'path';
+import * as mime from 'mime-types';
+import * as _ from 'underscore';
+import Jimp from 'jimp';
+import * as fs from 'fs-extra';
+import { Response } from 'express';
+import * as helpers from './lfs.utils';
+import { Config, ApiCommands, FileInfo, UploadedFile } from './types';
 
-const helpers = require('./lfs.utils');
+const api: Partial<ApiCommands> = {};
 
-const api = {};
-
-const config = {
+const config: Partial<Config> = {
   router: '/connector',
   disabled: ['chmod', 'size'],
   volumeicons: ['elfinder-navbar-root-local', 'elfinder-navbar-root-local'],
 };
 
-config.acl = function (path) {
-  const volume = helpers.volume(path);
-  const perms = config.roots[volume].permissions;
-  const permissions = perms instanceof Function ? perms(path) : perms;
+config.acl = function (filePath: string) {
+  const volume = helpers.volume(filePath);
+  const perms = config.roots![volume].permissions;
+  const permissions = perms instanceof Function ? perms(filePath) : perms;
   return (
     permissions || {
       read: 1,
@@ -29,7 +28,7 @@ config.acl = function (path) {
   );
 };
 
-api.archive = async function (opts, res) {
+api.archive = async (opts: any, res: Response): Promise<any> => {
   const target = helpers.decode(opts.target);
   const filePath = path.join(target.absolutePath, opts.name);
   await helpers.compress(opts.targets, filePath);
@@ -39,7 +38,7 @@ api.archive = async function (opts, res) {
   };
 };
 
-api.dim = async function (opts, res) {
+api.dim = async (opts: any, res: Response): Promise<any> => {
   const target = helpers.decode(opts.target);
   const img = await Jimp.read(target.absolutePath);
   return {
@@ -47,8 +46,8 @@ api.dim = async function (opts, res) {
   };
 };
 
-api.duplicate = async function (opt) {
-  const tasks = opt.targets.map(async (target) => {
+api.duplicate = async (opt: any): Promise<any> => {
+  const tasks = opt.targets.map(async (target: string) => {
     const _t = helpers.decode(target);
     const ext = path.extname(_t.name);
     const fil = path.basename(_t.name, ext);
@@ -68,7 +67,7 @@ api.duplicate = async function (opt) {
   };
 };
 
-api.extract = async function (opts, res) {
+api.extract = async (opts: any, res: Response): Promise<any> => {
   const target = helpers.decode(opts.target);
   const mkdir = opts.makedir == 1;
 
@@ -81,28 +80,25 @@ api.extract = async function (opts, res) {
   }
 
   const files = await helpers.extract(target.absolutePath, dest);
-  const tasks = files.map(async (file) =>
-    helpers.info(path.resolve(dest, file))
-  );
+  const tasks = files.map(async (file) => helpers.info(path.resolve(dest, file)));
 
   return { added: await Promise.all(tasks) };
 };
 
-api.file = function (opts, res) {
+api.file = async (opts: any, res: Response): Promise<void> => {
   const target = helpers.decode(opts.target);
   res.sendFile(target.absolutePath);
 };
 
-api.get = async function (opts, res) {
+api.get = async (opts: any, res: Response): Promise<any> => {
   const target = helpers.decode(opts.target);
   const content = await fs.readFile(target.absolutePath, 'utf8');
   return { content };
 };
 
-//TODO: Implement this
-api.info = async function (opts, res) {};
+api.info = async (opts: any, res: Response): Promise<any> => {};
 
-api.ls = async function (opts, res) {
+api.ls = async (opts: any, res: Response): Promise<any> => {
   if (!opts.target) throw new Error('errCmdParams');
 
   const info = helpers.decode(opts.target);
@@ -115,15 +111,14 @@ api.ls = async function (opts, res) {
   return { list };
 };
 
-//TODO check permission.
-api.mkdir = async function (opts, res) {
+api.mkdir = async (opts: any, res: Response): Promise<any> => {
   const dir = helpers.decode(opts.target);
   const dirs = opts.dirs || [];
   if (opts.name) {
     dirs.push(opts.name);
   }
 
-  const tasks = dirs.map(async (name) => {
+  const tasks = dirs.map(async (name: string) => {
     const _dir = path.join(dir.absolutePath, name);
     await fs.mkdirp(_dir);
     return helpers.info(_dir);
@@ -133,7 +128,7 @@ api.mkdir = async function (opts, res) {
   return { added };
 };
 
-api.mkfile = async function (opts, res) {
+api.mkfile = async (opts: any, res: Response): Promise<any> => {
   const dir = helpers.decode(opts.target);
   const name = opts.name;
   const filePath = dir.absolutePath + path.sep + name;
@@ -142,15 +137,15 @@ api.mkfile = async function (opts, res) {
   return { added: [await helpers.info(filePath)] };
 };
 
-api.open = async function (opts, res) {
-  let volumes;
+api.open = async (opts: any, res: Response): Promise<any> => {
+  let volumes: FileInfo[] | undefined;
   let target = opts.target;
   const init = opts.init == true;
-  const encodedRoot = helpers.encode(config.volumes[0] + path.sep);
-  const data = {
+  const encodedRoot = helpers.encode(config.volumes![0] + path.sep);
+  const data: any = {
     options: {
       uiCmdMap: [],
-      tmbUrl: path.join(config.roots[0].URL, '.tmb/'),
+      tmbUrl: path.join(config.roots![0].URL, '.tmb/'),
     },
   };
 
@@ -160,13 +155,12 @@ api.open = async function (opts, res) {
   }
   if (!target) throw new Error('errCmdParams');
 
-  //NOTE target must always be directory
   target = helpers.decode(target);
-  const dirExists = await fs.exists(target.absolutePath);
+  const dirExists = await fs.pathExists(target.absolutePath);
   if (!dirExists) target = helpers.decode(encodedRoot);
 
   let files = (await fs.readdir(target.absolutePath).catch(console.log)) || [];
-  const tasks = files.map(async (file) =>
+  const tasks = files.map(async (file: string) =>
     helpers.info(path.join(target.absolutePath, file))
   );
 
@@ -182,49 +176,41 @@ api.open = async function (opts, res) {
   return data;
 };
 
-api.parents = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    if (!opts.target) return reject('errCmdParams');
-    const dir = helpers.decode(opts.target);
-    let tree;
-    helpers.init().then(function (results) {
-      tree = results;
-      const read = function (t) {
-        const folder = path.dirname(t);
-        const isRoot = config.volumes.indexOf(t) >= 0;
-        if (isRoot) {
-          return resolve({
-            tree: tree,
-          });
-        } else {
-          helpers
-            .readdir(folder)
-            .then(function (files) {
-              const tasks = [];
-              _.each(files, function (file) {
-                if (file.isdir) {
-                  tasks.push(helpers.info(path.join(folder, file.name)));
-                }
-              });
-              Promise.all(tasks).then(function (folders) {
-                tree = tree.concat(folders);
-                read(folder);
-              });
-            })
-            .catch(function (e) {
-              reject(e);
-            });
+api.parents = async (opts: any, res: Response): Promise<any> => {
+  if (!opts.target) throw new Error('errCmdParams');
+
+  const dir = helpers.decode(opts.target);
+  let tree: FileInfo[] = await helpers.init();
+
+  const read = async (t: string): Promise<void> => {
+    const folder = path.dirname(t);
+    const isRoot = config.volumes!.indexOf(t) >= 0;
+
+    if (!isRoot) {
+      const files = await helpers.readdir(folder);
+      const tasks: Promise<FileInfo>[] = [];
+
+      _.each(files, (file) => {
+        if (file.isdir) {
+          tasks.push(helpers.info(path.join(folder, file.name)));
         }
-      };
-      read(dir.absolutePath);
-    });
-  });
+      });
+
+      const folders = await Promise.all(tasks);
+      tree = tree.concat(folders);
+      await read(folder);
+    }
+  };
+
+  await read(dir.absolutePath);
+
+  return { tree };
 };
 
-api.paste = async function (opts, res) {
+api.paste = async (opts: any, res: Response): Promise<any> => {
   const dest = helpers.decode(opts.dst);
 
-  const tasks = opts.targets.map(async (target) => {
+  const tasks = opts.targets.map(async (target: string) => {
     const info = helpers.decode(target);
     let name = info.name;
     if (opts.renames && opts.renames.indexOf(info.name) >= 0) {
@@ -243,9 +229,9 @@ api.paste = async function (opts, res) {
   const results = await Promise.all(tasks);
 
   const rtn = {
-    added: [],
-    removed: [],
-    changed: [],
+    added: [] as FileInfo[],
+    removed: [] as string[],
+    changed: [] as string[],
   };
 
   results.forEach((r) => {
@@ -261,7 +247,7 @@ api.paste = async function (opts, res) {
   return rtn;
 };
 
-api.put = async function (opts, res) {
+api.put = async (opts: any, res: Response): Promise<any> => {
   const target = helpers.decode(opts.target);
   const { content, encoding = 'UTF-8' } = opts;
 
@@ -270,8 +256,8 @@ api.put = async function (opts, res) {
   return { changed: [info] };
 };
 
-api.rename = function (opts, res) {
-  if (!opts.target) return promise.reject('errCmdParams');
+api.rename = async (opts: any, res: Response): Promise<any> => {
+  if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const dirname = path.dirname(dir.absolutePath);
   return helpers.move({
@@ -280,43 +266,42 @@ api.rename = function (opts, res) {
   });
 };
 
-api.resize = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    const target = helpers.decode(opts.target);
-    Jimp.read(target.absolutePath)
-      .then(function (image) {
-        if (opts.mode == 'resize') {
-          image = image.resize(parseInt(opts.width), parseInt(opts.height));
-        } else if (opts.mode == 'crop') {
-          image = image.crop(
-            parseInt(opts.x),
-            parseInt(opts.y),
-            parseInt(opts.width),
-            parseInt(opts.height)
-          );
-        } else if (opts.mode == 'rotate') {
-          image = image.rotate(parseInt(opts.degree));
-          if (opts.bg) {
-            image = image.background(parseInt(opts.bg.substr(1, 6), 16));
-          }
-        }
-        image.quality(parseInt(opts.quality)).write(target.absolutePath);
-        return helpers.info(target.absolutePath);
-      })
-      .then(function (info) {
-        info.tmb = 1;
-        resolve({
-          changed: [info],
-        });
-      })
-      .catch(function (err) {
-        reject(err);
-      });
+api.resize = async (opts: any, res: Response): Promise<any> => {
+  const target = helpers.decode(opts.target);
+  let image = await Jimp.read(target.absolutePath);
+
+  if (opts.mode == 'resize') {
+    image = image.resize(parseInt(opts.width), parseInt(opts.height));
+  } else if (opts.mode == 'crop') {
+    image = image.crop(
+      parseInt(opts.x),
+      parseInt(opts.y),
+      parseInt(opts.width),
+      parseInt(opts.height)
+    );
+  } else if (opts.mode == 'rotate') {
+    image = image.rotate(parseInt(opts.degree));
+    if (opts.bg) {
+      image = image.background(parseInt(opts.bg.substr(1, 6), 16));
+    }
+  }
+
+  await new Promise((resolve, reject) => {
+    image.quality(parseInt(opts.quality)).write(target.absolutePath, (err) => {
+      if (err) reject(err);
+      else resolve(undefined);
+    });
   });
+  const info = await helpers.info(target.absolutePath);
+  info.tmb = '1';
+
+  return {
+    changed: [info],
+  };
 };
 
-api.rm = async function (opts, res) {
-  const removed = [];
+api.rm = async (opts: any, res: Response): Promise<any> => {
+  const removed: string[] = [];
 
   for (const hash of opts.targets) {
     const target = helpers.decode(hash);
@@ -327,92 +312,92 @@ api.rm = async function (opts, res) {
   return { removed };
 };
 
-//not impletemented
-api.size = function (opts, res) {
-  return promise.resolve({
+api.size = async (opts: any, res: Response): Promise<any> => {
+  return {
     size: 'unkown',
-  });
+  };
 };
 
-api.search = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    if (!opts.q || opts.q.length < 1)
-      reject({
-        message: 'errCmdParams',
-      });
-    const target = helpers.decode(opts.target);
-    const tasks = [];
+api.search = async (opts: any, res: Response): Promise<any> => {
+  if (!opts.q || opts.q.length < 1) {
+    throw new Error('errCmdParams');
+  }
 
-    fs.walk(target.absolutePath)
-      .on('data', function (item) {
-        const name = path.basename(item.path);
-        if (name.indexOf(opts.q) >= 0) {
-          tasks.push(helpers.info(item.path));
-        }
-      })
-      .on('end', function () {
-        promise
-          .all(tasks)
-          .then(function (files) {
-            resolve({
-              files: files,
-            });
-          })
-          .catch(function (err) {
-            reject(err);
-          });
-      });
-  });
-};
+  const target = helpers.decode(opts.target);
+  const tasks: Promise<FileInfo>[] = [];
 
-api.tmb = function (opts, res) {
-  return new promise(function (resolve, reject) {
-    const files = [];
-    if (opts.current) {
-      const dir = helpers.decode(opts.current);
-      const items = fs.readdirSync(dir.absolutePath);
-      _.each(items, function (item) {
-        const _m = mime.lookup(item);
-        if (_m !== false && _m.indexOf('image/') == 0) {
-          files.push(path.join(dir.absolutePath, item));
-        }
-      });
-    } else if (opts.targets) {
-      _.each(opts.targets, function (target) {
-        const _t = helpers.decode(target);
-        files.push(_t.absolutePath);
-      });
+  const searchRecursive = async (dir: string): Promise<void> => {
+    const items = await fs.readdir(dir, { withFileTypes: true });
+
+    for (const item of items) {
+      const itemPath = path.join(dir, item.name);
+
+      if (item.name.indexOf(opts.q) >= 0) {
+        tasks.push(helpers.info(itemPath));
+      }
+
+      if (item.isDirectory()) {
+        await searchRecursive(itemPath);
+      }
     }
-    //create.
-    const tasks = [];
-    _.each(files, function (file) {
-      tasks.push(
-        Jimp.read(file).then(function (img) {
-          const op = helpers.encode(file);
-          img.resize(48, 48).write(path.join(config.tmbroot, op + '.png'));
-          return promise.resolve(op);
-        })
-      );
-    });
-    promise
-      .all(tasks)
-      .then(function (hashes) {
-        const rtn = {};
-        _.each(hashes, function (hash) {
-          rtn[hash] = hash + '.png';
-        });
-        resolve({
-          images: rtn,
-        });
-      })
-      .catch(function (err) {
-        console.log(err);
-        reject(err);
-      });
-  });
+  };
+
+  await searchRecursive(target.absolutePath);
+  const files = await Promise.all(tasks);
+
+  return { files };
 };
 
-api.tree = async function (opts, res) {
+api.tmb = async (opts: any, res: Response): Promise<any> => {
+  const files: string[] = [];
+
+  if (opts.current) {
+    const dir = helpers.decode(opts.current);
+    const items = await fs.readdir(dir.absolutePath);
+
+    _.each(items, (item) => {
+      const _m = mime.lookup(item);
+      if (_m !== false && _m.indexOf('image/') == 0) {
+        files.push(path.join(dir.absolutePath, item));
+      }
+    });
+  } else if (opts.targets) {
+    _.each(opts.targets, (target: string) => {
+      const _t = helpers.decode(target);
+      files.push(_t.absolutePath);
+    });
+  }
+
+  const tasks: Promise<string>[] = [];
+
+  _.each(files, (file) => {
+    tasks.push(
+      Jimp.read(file).then(async (img) => {
+        const op = helpers.encode(file);
+        await new Promise<void>((resolve, reject) => {
+          img.resize(48, 48).write(path.join(config.tmbroot!, op + '.png'), (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        return op;
+      })
+    );
+  });
+
+  const hashes = await Promise.all(tasks);
+  const rtn: { [key: string]: string } = {};
+
+  _.each(hashes, (hash) => {
+    rtn[hash] = hash + '.png';
+  });
+
+  return {
+    images: rtn,
+  };
+};
+
+api.tree = async (opts: any, res: Response): Promise<any> => {
   if (!opts.target) throw new Error('errCmdParams');
   const dir = helpers.decode(opts.target);
   const files = await helpers.readdir(dir.absolutePath);
@@ -423,13 +408,13 @@ api.tree = async function (opts, res) {
     }
   });
 
-  const tree = Promise.all(tasks);
+  const tree = await Promise.all(tasks);
   return { tree };
 };
 
-api.upload = async function (opts, res, _files) {
+api.upload = async (opts: any, res: Response, _files?: UploadedFile | UploadedFile[]): Promise<any> => {
   const target = helpers.decode(opts.target);
-  const files = _files instanceof Array ? _files : [_files];
+  const files = _files instanceof Array ? _files : [_files!];
 
   const tasks = files.map(async (file, i) => {
     let filename = file.filename;
@@ -456,7 +441,7 @@ api.upload = async function (opts, res, _files) {
   return { added };
 };
 
-api.zipdl = async function (opts, res) {
+api.zipdl = async (opts: any, res: Response): Promise<any> => {
   if (!opts.targets?.length) throw new Error('errCmdParams');
 
   let first = opts.targets[0];
@@ -476,8 +461,11 @@ api.zipdl = async function (opts, res) {
   };
 };
 
-module.exports = function (options) {
+const LFS = function (options: Partial<Config>) {
   Object.assign(config, options);
   Object.assign(helpers.config, config);
 };
-module.exports.api = api;
+
+(LFS as any).api = api;
+
+export = LFS;

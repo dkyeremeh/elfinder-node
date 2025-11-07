@@ -4,6 +4,8 @@ package-lock.json
 
 /coverage
 /media
+/dist
+CLAUDE.md
 
 .DS_Store
 *.log
