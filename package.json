@@ -41,6 +41,7 @@
     "build:watch": "tsc --watch",
     "prepublishOnly": "yarn build",
     "lint": "eslint .",
+    "dev": "yarn build:watch & yarn serve",
     "serve": "nodemon --enable-source-maps tests/server.js",
     "test:int": "yarn build && node --enable-source-maps node_modules/.bin/ava tests/int-tests/**/*.js",
     "test:cov": "yarn build && node --enable-source-maps node_modules/.bin/c8 -r text -r json-summary ava tests/int-tests/**/*.js"

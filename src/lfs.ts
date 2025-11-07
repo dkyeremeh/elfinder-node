@@ -176,7 +176,7 @@ export async function open(opts: OpenOpts) {
 
   if (init) {
     config.init?.();
-    targetHash ??= encodedRoot;
+    targetHash =targetHash || encodedRoot;
   }
   if (!targetHash) throw new Error('errCmdParams');
 

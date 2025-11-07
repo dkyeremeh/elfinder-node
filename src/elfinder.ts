@@ -30,7 +30,7 @@ export function elfinder(roots: VolumeRoot[]): Router {
       const result = await connector[cmd](req.query, res);
       if (result) res.json(result);
     } catch (e: any) {
-      console.log(e);
+      console.log(req.query, e);
       res.status(500).json({ error: e.message });
     }
   });
