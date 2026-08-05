@@ -30,7 +30,7 @@ export type LFSConfigInput = Partial<Config> & {
 export const compress = async (
   files: string[],
   dest: string,
-  config: LFSConfig
+  config: LFSConfig,
 ): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(dest);
@@ -67,7 +67,7 @@ export const compress = async (
 
 export const copy = async (
   opts: CopyMoveOptions,
-  config: LFSConfig
+  config: LFSConfig,
 ): Promise<CopyMoveResult> => {
   const fileExists = await fs.pathExists(opts.dst);
   if (fileExists) throw new Error('Destination exists');
@@ -89,25 +89,38 @@ export const decode = (dir: string, config: LFSConfig): DecodedPath => {
 
   volume = parseInt(dir[1]);
 
-  let relative = dir
+  // Restore standard base64 from the URL-safe encoding used in elFinder hashes
+  const encodedHash = dir
     .substr(3, dir.length - 3)
     .replace(/-/g, '+')
     .replace(/_/g, '/')
     .replace(/\./g, '=');
 
-  relative = lz.decompress(relative + '==', {
-    inputEncoding: 'Base64',
-  });
+  const relative: string = lz
+    .decompress(encodedHash, {
+      inputEncoding: 'Base64',
+    })
+    .replace(/\\/g, '/'); // convert \ path sep to /
+
+  if (relative.split('/').some((seg) => seg === '..')) {
+    throw Error('Invalid Path');
+  }
 
   name = path.basename(relative);
-  root = config.path;
+  root = path.resolve(config.path);
+  // Strip leading separator so path.resolve treats it as relative to root
+  const absolutePath = path.resolve(root, relative.replace(/^\/+/, ''));
+
+  if (absolutePath !== root && !absolutePath.startsWith(root + path.sep)) {
+    throw Error('Invalid Path');
+  }
 
   return {
     volume,
     dir: root,
     path: relative,
     name,
-    absolutePath: path.join(root, relative),
+    absolutePath,
   };
 };
 
@@ -127,7 +140,7 @@ export const encode = (dir: string, config: LFSConfig): string => {
 
 export const extract = async (
   source: string,
-  dest: string
+  dest: string,
 ): Promise<string[]> => {
   const zip = new Zip(source);
   const files = zip.getEntries().map((file: any) => file.entryName);
@@ -215,7 +228,7 @@ export const init = async (config: LFSConfig): Promise<FileInfo[]> => {
 
 export const move = async (
   opts: CopyMoveOptions,
-  config: LFSConfig
+  config: LFSConfig,
 ): Promise<CopyMoveResult> => {
   if (await fs.pathExists(opts.dst)) {
     throw new Error('Destination exists');
@@ -291,7 +304,7 @@ export interface ChunkUploadResult {
  * Returns information about whether the upload is complete and where the file is located
  */
 export const handleChunkUpload = async (
-  opts: ChunkUploadOptions
+  opts: ChunkUploadOptions,
 ): Promise<ChunkUploadResult> => {
   const { chunkName, chunkFile, range, destinationDir } = opts;
   const [start, , totalSize] = range.split(',').map(Number);
@@ -325,7 +338,7 @@ export const handleChunkUpload = async (
  */
 const mergeChunks = async (
   filename: string,
-  directory: string
+  directory: string,
 ): Promise<void> => {
   const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const chunkPattern = new RegExp(`^${escapedFilename}\\.\\d+_\\d+\\.part$`);
