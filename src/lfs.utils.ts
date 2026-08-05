@@ -1,7 +1,6 @@
 import * as lz from 'lzutf8';
 import * as path from 'path';
 import * as mime from 'mime-types';
-import * as _ from 'underscore';
 import * as fs from 'fs-extra';
 import * as archiver from 'archiver';
 import Zip from 'adm-zip';
@@ -160,7 +159,6 @@ export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
 
   if (r.mime.indexOf('image/') === 0) {
     const filename = encode(p, config);
-    console.log('bbb', config.tmbroot, filename);
     const tmbPath = path.join(config.tmbroot, filename + '.png');
     if (await fs.pathExists(tmbPath)) {
       r.tmb = filename + '.png';

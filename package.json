@@ -16,7 +16,7 @@
     "lzutf8": "^0.3.5",
     "mime-types": "^2.1.12",
     "promise": "^8.3.0",
-    "underscore": "^1.8.3"
+    "yup": "^1.7.1"
   },
   "devDependencies": {
     "@types/archiver": "^7.0.0",

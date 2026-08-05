@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as mime from 'mime-types';
-import * as _ from 'underscore';
 import Jimp from 'jimp';
 import * as fs from 'fs-extra';
 import { Response } from 'express';
@@ -115,7 +114,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       const files = await helpers.readdir(info.absolutePath);
       let list = files.map((e) => e.name);
       if (opts.intersect) {
-        list = _.intersection(list, opts.intersect);
+        list = list.filter((item) => opts.intersect!.includes(item));
       }
 
       return { list };
@@ -201,7 +200,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
           const files = await helpers.readdir(folder);
           const tasks: Promise<FileInfo>[] = [];
 
-          _.each(files, (file) => {
+          files.forEach((file) => {
             if (file.isdir) {
               tasks.push(helpers.info(path.join(folder, file.name), config));
             }
@@ -374,14 +373,14 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         const dir = helpers.decode(opts.current, config);
         const items = await fs.readdir(dir.absolutePath);
 
-        _.each(items, (item) => {
+        items.forEach((item) => {
           const _m = mime.lookup(item);
           if (_m !== false && _m.indexOf('image/') == 0) {
             files.push(path.join(dir.absolutePath, item));
           }
         });
       } else if (opts.targets) {
-        _.each(opts.targets, (target: string) => {
+        opts.targets.forEach((target: string) => {
           const _t = helpers.decode(target, config);
           files.push(_t.absolutePath);
         });
@@ -389,7 +388,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
       const tasks: Promise<string>[] = [];
 
-      _.each(files, (file) => {
+      files.forEach((file) => {
         tasks.push(
           Jimp.read(file).then(async (img) => {
             const op = helpers.encode(file, config);
@@ -409,7 +408,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       const hashes = await Promise.all(tasks);
       const rtn: { [key: string]: string } = {};
 
-      _.each(hashes, (hash) => {
+      hashes.forEach((hash) => {
         rtn[hash] = hash + '.png';
       });
 

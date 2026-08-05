@@ -1,3 +1,5 @@
+import * as path from 'path';
+import * as yup from 'yup';
 import express, { Request, Response, Router } from 'express';
 import * as busboy from 'express-busboy';
 import LFS from './lfs';
@@ -8,6 +10,29 @@ import { driverRegistry } from './driverRegistry';
 export type { VolumeDriver, VolumeRoot };
 
 const router: Router = express.Router();
+
+const stripTraversal = (p: string) =>
+  p
+    .split('/')
+    .filter((seg) => seg !== '..' && seg !== '')
+    .join('/');
+
+const optsSchema = yup.object({
+  name: yup.string().transform((v) => path.basename(v)),
+  chunk: yup.string().transform((v) => path.basename(v)),
+  dirs: yup.array(yup.string().transform((v) => path.basename(v))),
+  suffix: yup
+    .string()
+    .test('no-path-sep', 'errInvParams', (v) => !v || !/[/\\]/.test(v)),
+  upload_path: yup.array(yup.string().transform(stripTraversal)),
+});
+
+const filesSchema = yup.array(
+  yup
+    .object({ filename: yup.string().transform((v) => path.basename(v)) })
+    .nullable()
+    .default(null),
+);
 
 export function elfinder(roots: VolumeRoot[]): Router {
   // Initialize the driver registry with all volumes
@@ -23,11 +48,14 @@ export function elfinder(roots: VolumeRoot[]): Router {
       const driver = driverRegistry.getDriverForRequest(req.query);
       if (typeof driver[cmd] !== 'function') throw notImplementedError(cmd);
 
-      const result = await driver[cmd](req.query as any, res);
+      const opts = await optsSchema.validate(req.query);
+
+      const result = await driver[cmd](opts, res);
       if (result) res.json(result);
     } catch (e: any) {
       console.error(req.query, e);
-      res.status(500).json({ error: e.message });
+      const status = e instanceof yup.ValidationError ? 400 : 500;
+      res.status(status).json({ error: e.message });
     }
   });
 
@@ -37,15 +65,15 @@ export function elfinder(roots: VolumeRoot[]): Router {
       const driver = driverRegistry.getDriverForRequest(req.query);
       if (typeof driver[cmd] !== 'function') throw notImplementedError(cmd);
 
-      const result = await driver[cmd](
-        req.body as any,
-        res,
-        req.files?.['upload[]']
-      );
+      const opts = await optsSchema.validate(req.body);
+      const files = await filesSchema.validate(req.files?.['upload[]']);
+
+      const result = await driver[cmd](opts, res, files);
       if (result) res.json(result);
     } catch (e: any) {
       console.error(req.body, e);
-      res.status(500).json({ error: e.message });
+      const status = e instanceof yup.ValidationError ? 400 : 500;
+      res.status(status).json({ error: e.message });
     }
   });
 
