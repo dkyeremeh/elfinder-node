@@ -6,6 +6,7 @@ import * as fs from 'fs-extra';
 import * as archiver from 'archiver';
 import Zip from 'adm-zip';
 import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import {
   Config,
   DecodedPath,
@@ -32,37 +33,24 @@ export const compress = async (
   dest: string,
   config: LFSConfig,
 ): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    const output = fs.createWriteStream(dest);
-    const archive = archiver.default('zip', {
-      store: true,
-    });
+  const output = fs.createWriteStream(dest);
+  const archive = archiver.default('zip', { store: true });
 
-    output.on('close', () => {
-      resolve(true);
-    });
+  for (const file of files) {
+    const target = decode(file, config);
+    if ((await fs.lstat(target.absolutePath)).isDirectory()) {
+      const name = path.basename(target.absolutePath);
+      archive.directory(path.normalize(target.absolutePath + path.sep), name);
+    } else {
+      archive.file(target.absolutePath, { name: target.name });
+    }
+  }
 
-    archive.on('error', (err: Error) => {
-      console.log(err);
-      reject(err);
-    });
+  const done = pipeline(archive, output);
+  archive.finalize();
+  await done;
 
-    archive.pipe(output);
-
-    _.each(files, (file) => {
-      const target = decode(file, config);
-      if (fs.lstatSync(target.absolutePath).isDirectory()) {
-        const name = path.basename(target.absolutePath);
-        archive.directory(path.normalize(target.absolutePath + path.sep), name);
-      } else {
-        archive.file(target.absolutePath, {
-          name: target.name,
-        });
-      }
-    });
-
-    archive.finalize();
-  });
+  return true;
 };
 
 export const copy = async (
@@ -307,7 +295,10 @@ export const handleChunkUpload = async (
   opts: ChunkUploadOptions,
 ): Promise<ChunkUploadResult> => {
   const { chunkName, chunkFile, range, destinationDir } = opts;
-  const [start, , totalSize] = range.split(',').map(Number);
+  const parts = range.split(',').map(Number);
+  if (parts.length < 3 || parts.some(isNaN))
+    throw new Error('Invalid chunk range');
+  const [start, , totalSize] = parts;
 
   // Extract real filename by removing the chunk pattern (.N_M.part)
   const realFilename = chunkName.replace(/\.\d+_\d+\.part$/, '');
@@ -358,19 +349,21 @@ const mergeChunks = async (
   const finalPath = path.join(directory, filename);
   const writeStream = fs.createWriteStream(finalPath);
 
-  // Write each chunk in order and clean up
   for (const chunk of chunkFiles) {
     const chunkFullPath = path.join(directory, chunk);
-    const data = await fs.readFile(chunkFullPath);
-    writeStream.write(data);
-    await fs.remove(chunkFullPath);
+    await pipeline(fs.createReadStream(chunkFullPath), writeStream, {
+      end: false,
+    });
   }
 
-  // Finalize the write stream
   await new Promise<void>((resolve, reject) => {
     writeStream.end((err?: Error) => {
       if (err) reject(err);
       else resolve();
     });
   });
+
+  await Promise.all(
+    chunkFiles.map((chunk) => fs.remove(path.join(directory, chunk))),
+  );
 };
