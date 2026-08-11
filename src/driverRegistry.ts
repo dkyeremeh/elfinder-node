@@ -94,5 +94,7 @@ class DriverRegistry {
   }
 }
 
+export { DriverRegistry };
+
 // Export a singleton instance
 export const driverRegistry = new DriverRegistry();

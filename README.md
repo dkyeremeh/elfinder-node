@@ -54,6 +54,21 @@ app.use('/connector', elfinder(roots));
 app.listen(process.env.PORT || 8000);
 ```
 
+You can also define roots dynamically per request — useful for serving a different root directory per user:
+
+```javascript
+app.use('/connector', (req, res, next) =>
+  elfinder([
+    {
+      driver: LocalFileStorage,
+      URL: `/uploads/${req.user.id}/`,
+      path: `/storage/${req.user.id}`,
+      permissions: { read: 1, write: 1, lock: 0 },
+    },
+  ])(req, res, next)
+);
+```
+
 **Note:** This package is built as CommonJS and works with both `require()` and ES Module `import` statements.
 
 ## Configuration

@@ -5,11 +5,9 @@ import * as busboy from 'express-busboy';
 import LFS from './lfs';
 import { notImplementedError } from './utils';
 import { VolumeRoot, VolumeDriver } from './types';
-import { driverRegistry } from './driverRegistry';
+import { driverRegistry, DriverRegistry } from './driverRegistry';
 
 export type { VolumeDriver, VolumeRoot };
-
-const router: Router = express.Router();
 
 const stripTraversal = (p: string) =>
   p
@@ -35,8 +33,10 @@ const filesSchema = yup.array(
 );
 
 export function elfinder(roots: VolumeRoot[]): Router {
-  // Initialize the driver registry with all volumes
-  driverRegistry.initialize(roots);
+  const registry = new DriverRegistry();
+  registry.initialize(roots);
+
+  const router: Router = express.Router();
 
   busboy.extend(router, {
     upload: true,
@@ -45,7 +45,7 @@ export function elfinder(roots: VolumeRoot[]): Router {
   router.get('/', async (req: Request, res: Response) => {
     const cmd = req.query.cmd as string;
     try {
-      const driver = driverRegistry.getDriverForRequest(req.query);
+      const driver = registry.getDriverForRequest(req.query);
       if (typeof driver[cmd] !== 'function') throw notImplementedError(cmd);
 
       const opts = await optsSchema.validate(req.query);
@@ -62,7 +62,7 @@ export function elfinder(roots: VolumeRoot[]): Router {
   router.post('/', async (req: Request, res: Response) => {
     const cmd = req.body.cmd as string;
     try {
-      const driver = driverRegistry.getDriverForRequest(req.query);
+      const driver = registry.getDriverForRequest(req.query);
       if (typeof driver[cmd] !== 'function') throw notImplementedError(cmd);
 
       const opts = await optsSchema.validate(req.body);
