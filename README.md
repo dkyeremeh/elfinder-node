@@ -89,6 +89,38 @@ permissions: function (path) {
 };
 ```
 
+### Options
+
+`elfinder(roots, options)` accepts an optional second argument:
+
+- `busboy` [optional, default `true`] - The connector parses multipart uploads with its own `express-busboy` instance. Set this to `false` if your host app already runs a multipart parser ahead of this router (e.g. a global `express-busboy`/`busboy` middleware mounted on `app`). The raw request stream can only be read once, so running a second parser here would hang waiting on an already-drained stream — with `busboy: false`, the connector trusts `req.body`/`req.files` to already be populated by your own parser instead.
+
+```javascript
+const express = require('express');
+const busboy = require('express-busboy');
+const { elfinder, LocalFileStorage } = require('elfinder-node');
+
+const app = express();
+
+// Host app's own global multipart parser, mounted ahead of the connector
+busboy.extend(app, { upload: true });
+
+const roots = [
+  {
+    driver: LocalFileStorage,
+    URL: '/uploads/',
+    path: '/path/to/dir',
+    permissions: { read: 1, write: 1, lock: 0 },
+  },
+];
+
+// busboy: false — reuse req.body/req.files already populated above instead
+// of parsing the request a second time
+app.use('/connector', elfinder(roots, { busboy: false }));
+
+app.listen(process.env.PORT || 8000);
+```
+
 ## Credits
 
 Most of the work was done by [@quantv](https://github.com/quantv)

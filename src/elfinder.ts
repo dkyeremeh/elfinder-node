@@ -32,15 +32,33 @@ const filesSchema = yup.array(
     .default(null),
 );
 
-export function elfinder(roots: VolumeRoot[]): Router {
+export interface ElfinderOptions {
+  /**
+   * Set to false when the host app already parses multipart uploads ahead of
+   * this router (e.g. its own global busboy middleware). The raw request
+   * stream can only be read once, so running a second busboy here would hang
+   * waiting on an already-drained stream — skip it and read req.body/req.files
+   * as already populated by the host's own parser. Defaults to true.
+   */
+  busboy?: boolean;
+}
+
+export function elfinder(
+  roots: VolumeRoot[],
+  options: ElfinderOptions = {},
+): Router {
+  const { busboy: useBusboy = true } = options;
+
   const registry = new DriverRegistry();
   registry.initialize(roots);
 
   const router: Router = express.Router();
 
-  busboy.extend(router, {
-    upload: true,
-  });
+  if (useBusboy) {
+    busboy.extend(router, {
+      upload: true,
+    });
+  }
 
   router.get('/', async (req: Request, res: Response) => {
     const cmd = req.query.cmd as string;
