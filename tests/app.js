@@ -5,19 +5,20 @@ const app = express();
 const { elfinder, LocalFileStorage } = require('../dist/elfinder');
 
 const uploadsDir = resolve(__dirname, '../media/uploads');
-const roots = [
-  {
-    driver: LocalFileStorage,
-    URL: '/uploads/', //Required
-    path: uploadsDir, //Required
-    name: 'Uploads',
-    permissions: { read: 1, write: 1 },
-  },
-];
 
 app.use('/uploads', express.static(uploadsDir));
 
-app.use('/connector', elfinder(roots));
+app.use('/connector', (req, res, next) =>
+  elfinder([
+    {
+      driver: LocalFileStorage,
+      URL: '/uploads/', //Required
+      path: uploadsDir, //Required
+      name: 'Uploads',
+      permissions: { read: 1, write: 1 },
+    },
+  ])(req, res, next)
+);
 app.get('/', function (req, res) {
   res.sendFile(resolve(__dirname, './elfinder.html'));
 });
