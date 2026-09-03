@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as mime from 'mime-types';
-import Jimp from 'jimp';
+import sharp from 'sharp';
 import * as fs from 'fs-extra';
 import { Response } from 'express';
 import * as helpers from './lfs.utils';
@@ -44,9 +44,9 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
     dim: async function (opts) {
       const target = helpers.decode(opts.target, config);
-      const img = await Jimp.read(target.absolutePath);
+      const { width, height } = await sharp(target.absolutePath).metadata();
       return {
-        dim: img.bitmap.width + 'x' + img.bitmap.height,
+        dim: width + 'x' + height,
       };
     },
 
@@ -284,32 +284,33 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
     resize: async function (opts) {
       const target = helpers.decode(opts.target, config);
-      let image = await Jimp.read(target.absolutePath);
+      let image = sharp(target.absolutePath);
 
       if (opts.mode == 'resize') {
         image = image.resize(parseInt(opts.width), parseInt(opts.height));
       } else if (opts.mode == 'crop') {
-        image = image.crop(
-          parseInt(opts.x),
-          parseInt(opts.y),
-          parseInt(opts.width),
-          parseInt(opts.height)
-        );
+        image = image.extract({
+          left: parseInt(opts.x),
+          top: parseInt(opts.y),
+          width: parseInt(opts.width),
+          height: parseInt(opts.height),
+        });
       } else if (opts.mode == 'rotate') {
-        image = image.rotate(parseInt(opts.degree));
-        if (opts.bg) {
-          image = image.background(parseInt(opts.bg.substr(1, 6), 16));
-        }
+        const rotateOpts = opts.bg
+          ? { background: helpers.hexToRgba(opts.bg) }
+          : undefined;
+        image = image.rotate(parseInt(opts.degree), rotateOpts);
       }
 
-      await new Promise((resolve, reject) => {
-        image
-          .quality(parseInt(opts.quality))
-          .write(target.absolutePath, (err) => {
-            if (err) reject(err);
-            else resolve(undefined);
-          });
-      });
+      image = helpers.applyQuality(
+        image,
+        target.absolutePath,
+        parseInt(opts.quality)
+      );
+
+      const buffer = await image.toBuffer();
+      await fs.writeFile(target.absolutePath, buffer);
+
       const info = await helpers.info(target.absolutePath, config);
       info.tmb = '1';
 
@@ -390,18 +391,14 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
       files.forEach((file) => {
         tasks.push(
-          Jimp.read(file).then(async (img) => {
+          (async () => {
             const op = helpers.encode(file, config);
-            await new Promise<void>((resolve, reject) => {
-              img
-                .resize(48, 48)
-                .write(path.join(config.tmbroot, op + '.png'), (err) => {
-                  if (err) reject(err);
-                  else resolve();
-                });
-            });
+            await sharp(file)
+              .resize(48, 48)
+              .png()
+              .toFile(path.join(config.tmbroot, op + '.png'));
             return op;
-          })
+          })()
         );
       });
 

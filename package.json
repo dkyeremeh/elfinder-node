@@ -1,6 +1,6 @@
 {
   "name": "elfinder-node",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "A NodeJS connector/backend for elFinder file manager",
   "main": "dist/elfinder.js",
   "types": "dist/elfinder.d.ts",
@@ -12,10 +12,10 @@
     "express": "^4.15.2",
     "express-busboy": "^10.1.0",
     "fs-extra": "^11.1.1",
-    "jimp": "^0.2.27",
     "lzutf8": "^0.3.5",
     "mime-types": "^2.1.12",
     "promise": "^8.3.0",
+    "sharp": "^0.35.4",
     "yup": "^1.7.1"
   },
   "devDependencies": {

@@ -4,6 +4,7 @@ import * as mime from 'mime-types';
 import * as fs from 'fs-extra';
 import * as archiver from 'archiver';
 import Zip from 'adm-zip';
+import type { Sharp } from 'sharp';
 import { promisify } from 'util';
 import { pipeline } from 'stream/promises';
 import {
@@ -262,6 +263,36 @@ export const suffix = (name: string, suff: string): string => {
   const ext = path.extname(name);
   const fil = path.basename(name, ext);
   return fil + suff + ext;
+};
+
+export const hexToRgba = (
+  hex: string
+): { r: number; g: number; b: number; alpha: number } => {
+  const clean = hex.replace('#', '');
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+    alpha: 1,
+  };
+};
+
+export const applyQuality = (
+  image: Sharp,
+  filePath: string,
+  quality: number
+): Sharp => {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.jpg' || ext === '.jpeg') {
+    return image.jpeg({ quality });
+  }
+  if (ext === '.webp') {
+    return image.webp({ quality });
+  }
+  if (ext === '.png') {
+    return image.png({ quality });
+  }
+  return image;
 };
 
 export const volume = (p: string, config: LFSConfig): number => {
