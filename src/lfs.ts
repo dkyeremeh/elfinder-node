@@ -6,10 +6,17 @@ import { Response } from 'express';
 import * as helpers from './lfs.utils';
 import { DriverSetup, FileInfo } from './types';
 
+const defaultPermissions = {
+  read: true,
+  write: true,
+  locked: false,
+  hidden: false,
+};
+
 const defaultOptions = {
   disabled: ['chmod', 'size'],
   icon: 'elfinder-navbar-root-local',
-  permissions: { read: 1, write: 1, locked: 0 },
+  permissions: defaultPermissions,
 };
 
 const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
@@ -22,13 +29,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
   config.acl = function (filePath: string) {
     const perms = config.permissions;
     const permissions = perms instanceof Function ? perms(filePath) : perms;
-    return (
-      permissions || {
-        read: 1,
-        write: 1,
-        locked: 0,
-      }
-    );
+    return { ...defaultPermissions, ...permissions };
   };
 
   return {
@@ -111,7 +112,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       if (!opts.target) throw new Error('errCmdParams');
 
       const info = helpers.decode(opts.target, config);
-      const files = await helpers.readdir(info.absolutePath);
+      const files = await helpers.readdir(info.absolutePath, config);
       let list = files.map((e) => e.name);
       if (opts.intersect) {
         list = list.filter((item) => opts.intersect!.includes(item));
@@ -169,9 +170,11 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       if (!dirExists) target = helpers.decode(encodedRoot, config);
 
       let files =
-        (await fs.readdir(target.absolutePath).catch(console.log)) || [];
-      const tasks = files.map(async (file: string) =>
-        helpers.info(path.join(target.absolutePath, file), config)
+        (await helpers
+          .readdir(target.absolutePath, config)
+          .catch(console.log)) || [];
+      const tasks = files.map(async (file) =>
+        helpers.info(path.join(target.absolutePath, file.name), config)
       );
 
       data.files = await Promise.all(tasks);
@@ -197,7 +200,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         const isRoot = config.path === t;
 
         if (!isRoot) {
-          const files = await helpers.readdir(folder);
+          const files = await helpers.readdir(folder, config);
           const tasks: Promise<FileInfo>[] = [];
 
           files.forEach((file) => {
@@ -350,6 +353,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
 
         for (const item of items) {
           const itemPath = path.join(dir, item.name);
+          if (config.acl(itemPath).hidden) continue;
 
           if (item.name.indexOf(opts.q) >= 0) {
             tasks.push(helpers.info(itemPath, config));
@@ -417,7 +421,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
     tree: async function (opts) {
       if (!opts.target) throw new Error('errCmdParams');
       const dir = helpers.decode(opts.target, config);
-      const files = await helpers.readdir(dir.absolutePath);
+      const files = await helpers.readdir(dir.absolutePath, config);
 
       const tasks = files.map(async (file) => {
         if (file.isdir) {

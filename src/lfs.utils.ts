@@ -149,9 +149,9 @@ export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
       : mime.lookup(p) || 'application/binary',
     ts: Math.floor(stat.mtime.getTime() / 1000),
     volumeid: 'v' + parsedInfo.volume + '_',
-    read: 1,
-    write: 1,
-    locked: 0,
+    read: true,
+    write: true,
+    locked: false,
     isdir: false,
   };
 
@@ -186,9 +186,9 @@ export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
   }
 
   const acl = config.acl(p);
-  r.read = acl.read;
-  r.write = acl.write;
-  r.locked = acl.locked;
+  r.read = Boolean(acl.read);
+  r.write = Boolean(acl.write);
+  r.locked = Boolean(acl.locked);
   r.isdir = r.mime === 'directory';
 
   if (r.isdir) {
@@ -244,12 +244,18 @@ export const parse = (p: string, config: LFSConfig): ParsedPath => {
   };
 };
 
-export const readdir = async (dir: string): Promise<FileItem[]> => {
+export const readdir = async (
+  dir: string,
+  config?: LFSConfig,
+): Promise<FileItem[]> => {
   const items = await fs.readdir(dir);
   const files: FileItem[] = [];
 
   for (const item of items) {
-    const itemInfo = await fs.lstat(path.join(dir, item));
+    const itemPath = path.join(dir, item);
+    if (config?.acl(itemPath).hidden) continue;
+
+    const itemInfo = await fs.lstat(itemPath);
     files.push({
       name: item,
       isdir: itemInfo.isDirectory(),

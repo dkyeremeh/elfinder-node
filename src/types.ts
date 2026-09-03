@@ -15,9 +15,9 @@ export interface FileInfo {
   volumeid: string;
   phash?: string;
   tmb?: string | '1';
-  read: number;
-  write: number;
-  locked: number;
+  read: boolean;
+  write: boolean;
+  locked: boolean;
   isdir: boolean;
   dirs?: 1;
   options?: {
@@ -72,9 +72,10 @@ export type DriverSetup = <T extends Config>(
 ) => VolumeDriver;
 
 export type Permissions = {
-  read: number;
-  write: number;
-  locked: number;
+  read?: number | boolean;
+  write?: number | boolean;
+  locked?: number | boolean;
+  hidden?: number | boolean;
 };
 
 type PermissionsInput = Permissions | ((path: string) => Permissions);

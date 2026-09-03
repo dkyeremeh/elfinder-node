@@ -5,7 +5,7 @@ import * as busboy from 'express-busboy';
 import LFS from './lfs';
 import { notImplementedError } from './utils';
 import { VolumeRoot, VolumeDriver } from './types';
-import { driverRegistry, DriverRegistry } from './driverRegistry';
+import { DriverRegistry } from './driverRegistry';
 
 export type { VolumeDriver, VolumeRoot };
 
@@ -80,4 +80,4 @@ export function elfinder(roots: VolumeRoot[]): Router {
   return router;
 }
 
-export { LFS as LocalFileStorage, LFS, driverRegistry };
+export { LFS as LocalFileStorage, LFS, DriverRegistry };
