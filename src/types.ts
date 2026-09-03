@@ -61,24 +61,29 @@ export type VolumeDriver = {
   upload: (
     opts: UploadOpts,
     res: Response,
-    files?: UploadedFile | UploadedFile[]
+    files?: UploadedFile | UploadedFile[],
   ) => Promise<any>;
   zipdl: (opts: ZipdlOpts) => Promise<any>;
   [key: string]: any;
 };
 
 export type DriverSetup = <T extends Config>(
-  config: Partial<T>
+  config: Partial<T>,
 ) => VolumeDriver;
+
+export type Permissions = {
+  read: number;
+  write: number;
+  locked: number;
+};
+
+type PermissionsInput = Permissions | ((path: string) => Permissions);
 
 export interface VolumeRoot {
   driver: DriverSetup;
   URL: string;
-  permissions?: {
-    read: number;
-    write: number;
-    locked: number;
-  };
+  name?: string;
+  permissions?: PermissionsInput;
 }
 
 export interface DecodedPath {
@@ -107,8 +112,9 @@ export interface Config {
   icon: string;
   /** Base url for public links */
   URL: string;
-  permissions: { read: number; write: number; locked: number };
-  acl: (path: string) => { read: number; write: number; locked: number };
+  name?: string;
+  permissions: PermissionsInput;
+  acl: (path: string) => Permissions;
 }
 
 export interface CopyMoveOptions {

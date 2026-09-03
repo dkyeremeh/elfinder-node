@@ -20,6 +20,7 @@ export type LFSConfig = Config & {
   init?: Function;
   path: string;
   tmbroot: string;
+  name?: string;
 };
 
 export type LFSConfigInput = Partial<Config> & {
@@ -205,6 +206,9 @@ export const info = async (p: string, config: LFSConfig): Promise<FileInfo> => {
 
 export const init = async (config: LFSConfig): Promise<FileInfo[]> => {
   const volumeInfo = await info(config.path, config);
+  if (config.name) {
+    volumeInfo.name = config.name;
+  }
   volumeInfo.phash = '';
   return [volumeInfo];
 };
