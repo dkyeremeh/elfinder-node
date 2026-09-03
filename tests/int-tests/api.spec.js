@@ -2,6 +2,7 @@ const test = require('ava');
 const app = require('../app');
 const qs = require('qs');
 const fs = require('fs-extra');
+const AdmZip = require('adm-zip');
 const { resolve } = require('path');
 
 const request = require('supertest')(app);
@@ -40,6 +41,37 @@ test('api.archive', async (t) => {
   t.truthy(archive?.name);
   t.truthy(archive?.hash);
   t.true(await fs.exists(dir + '/Archive.zip'));
+
+  const zip = new AdmZip(dir + '/Archive.zip');
+  const entries = zip.getEntries().map((e) => e.entryName);
+  t.deepEqual(entries, ['a.text']);
+  t.is(zip.readAsText('a.text'), 'test file');
+});
+
+test('api.archive.directory', async (t) => {
+  await fs.mkdirp(dir + '/folder');
+  await fs.writeFile(dir + '/folder/b.text', 'nested file');
+
+  const { body } = await request
+    .get(
+      url({
+        cmd: 'archive',
+        name: 'ArchiveDir.zip',
+        target: encodePath('/'),
+        targets: [encodePath('/folder')],
+      })
+    )
+    .expect(200);
+
+  const archive = body.added?.[0];
+  t.truthy(archive?.name);
+  t.truthy(archive?.hash);
+  t.true(await fs.exists(dir + '/ArchiveDir.zip'));
+
+  const zip = new AdmZip(dir + '/ArchiveDir.zip');
+  const entries = zip.getEntries().map((e) => e.entryName);
+  t.true(entries.includes('folder/b.text'));
+  t.is(zip.readAsText('folder/b.text'), 'nested file');
 });
 
 test('api.extract', async (t) => {

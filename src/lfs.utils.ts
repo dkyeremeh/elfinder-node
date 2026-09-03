@@ -2,7 +2,6 @@ import * as lz from 'lzutf8';
 import * as path from 'path';
 import * as mime from 'mime-types';
 import * as fs from 'fs-extra';
-import * as archiver from 'archiver';
 import Zip from 'adm-zip';
 import type { Sharp } from 'sharp';
 import { promisify } from 'util';
@@ -33,22 +32,19 @@ export const compress = async (
   dest: string,
   config: LFSConfig,
 ): Promise<boolean> => {
-  const output = fs.createWriteStream(dest);
-  const archive = archiver.default('zip', { store: true });
+  const zip = new Zip();
 
   for (const file of files) {
     const target = decode(file, config);
     if ((await fs.lstat(target.absolutePath)).isDirectory()) {
       const name = path.basename(target.absolutePath);
-      archive.directory(path.normalize(target.absolutePath + path.sep), name);
+      zip.addLocalFolder(target.absolutePath, name);
     } else {
-      archive.file(target.absolutePath, { name: target.name });
+      zip.addLocalFile(target.absolutePath, '', target.name);
     }
   }
 
-  const done = pipeline(archive, output);
-  archive.finalize();
-  await done;
+  await zip.writeZipPromise(dest);
 
   return true;
 };

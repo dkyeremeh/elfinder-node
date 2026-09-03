@@ -7,6 +7,9 @@ declare module 'adm-zip' {
       overwrite: boolean,
       callback?: (error?: Error) => void
     ): void;
+    addLocalFile(localPath: string, zipPath?: string, zipName?: string): void;
+    addLocalFolder(localPath: string, zipPath?: string): void;
+    writeZipPromise(targetFileName?: string): Promise<void>;
   }
 
   export = AdmZip;
