@@ -170,11 +170,12 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       if (!dirExists) target = helpers.decode(encodedRoot, config);
 
       let files =
-        (await helpers
-          .readdir(target.absolutePath, config)
-          .catch(console.log)) || [];
+        (await fs.readdir(target.absolutePath).catch(console.log)) || [];
+      files = files.filter(
+        (file) => !config.acl(path.join(target.absolutePath, file)).hidden
+      );
       const tasks = files.map(async (file) =>
-        helpers.info(path.join(target.absolutePath, file.name), config)
+        helpers.info(path.join(target.absolutePath, file), config)
       );
 
       data.files = await Promise.all(tasks);
@@ -389,6 +390,10 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
           const _t = helpers.decode(target, config);
           files.push(_t.absolutePath);
         });
+      }
+
+      if (files.length) {
+        await fs.ensureDir(config.tmbroot);
       }
 
       const tasks: Promise<string>[] = [];

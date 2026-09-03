@@ -66,7 +66,10 @@ export function elfinder(roots: VolumeRoot[]): Router {
       if (typeof driver[cmd] !== 'function') throw notImplementedError(cmd);
 
       const opts = await optsSchema.validate(req.body);
-      const files = await filesSchema.validate(req.files?.['upload[]']);
+      const rawFiles = req.files?.['upload[]'];
+      const files = await filesSchema.validate(
+        Array.isArray(rawFiles) ? rawFiles : [rawFiles],
+      );
 
       const result = await driver[cmd](opts, res, files);
       if (result) res.json(result);

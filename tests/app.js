@@ -10,7 +10,8 @@ const roots = [
     driver: LocalFileStorage,
     URL: '/uploads/', //Required
     path: uploadsDir, //Required
-    permissions: { read: 1, write: 1, lock: 0 },
+    name: 'Uploads',
+    permissions: { read: 1, write: 1 },
   },
 ];
 
