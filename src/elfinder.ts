@@ -23,6 +23,8 @@ const optsSchema = yup.object({
     .string()
     .test('no-path-sep', 'errInvParams', (v) => !v || !/[/\\]/.test(v)),
   upload_path: yup.array(yup.string().transform(stripTraversal)),
+  // Non-file "upload[]" field; sent as "chunkfail" to abort a chunked upload.
+  upload: yup.array(yup.string()),
 });
 
 const filesSchema = yup.array(

@@ -246,6 +246,7 @@ export interface UploadOpts {
   cid?: string;
   mtime?: string[];
   dropWith?: string;
+  upload?: string[];
 }
 
 export interface ZipdlOpts {

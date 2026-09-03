@@ -272,7 +272,7 @@ export const suffix = (name: string, suff: string): string => {
 };
 
 export const hexToRgba = (
-  hex: string
+  hex: string,
 ): { r: number; g: number; b: number; alpha: number } => {
   const clean = hex.replace('#', '');
   return {
@@ -286,7 +286,7 @@ export const hexToRgba = (
 export const applyQuality = (
   image: Sharp,
   filePath: string,
-  quality: number
+  quality: number,
 ): Sharp => {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === '.jpg' || ext === '.jpeg') {
@@ -312,7 +312,6 @@ export const volume = (p: string, config: LFSConfig): number => {
 export interface ChunkUploadOptions {
   chunkName: string;
   chunkFile: string;
-  range: string;
   destinationDir: string;
 }
 
@@ -322,6 +321,32 @@ export interface ChunkUploadResult {
   chunkPath: string;
 }
 
+const chunkNamePattern = /^(.*)\.(\d+)_(\d+)\.part$/;
+
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const parseChunkName = (
+  chunkName: string,
+): { realFilename: string; total: number } | null => {
+  const match = chunkName.match(chunkNamePattern);
+  if (!match) return null;
+  const [, realFilename, , lastIndexStr] = match;
+  // elFinder's client encodes the *last chunk's index* as this segment
+  // (e.g. a 3-chunk upload is named .0_2, .1_2, .2_2), not the chunk count.
+  return { realFilename, total: parseInt(lastIndexStr, 10) + 1 };
+};
+
+const getChunkFiles = async (
+  realFilename: string,
+  directory: string,
+): Promise<string[]> => {
+  const chunkPattern = new RegExp(
+    `^${escapeRegExp(realFilename)}\\.\\d+_\\d+\\.part$`,
+  );
+  return (await fs.readdir(directory)).filter((f) => chunkPattern.test(f));
+};
+
 /**
  * Handles uploading a single chunk of a file
  * Returns information about whether the upload is complete and where the file is located
@@ -329,14 +354,12 @@ export interface ChunkUploadResult {
 export const handleChunkUpload = async (
   opts: ChunkUploadOptions,
 ): Promise<ChunkUploadResult> => {
-  const { chunkName, chunkFile, range, destinationDir } = opts;
-  const parts = range.split(',').map(Number);
-  if (parts.length < 3 || parts.some(isNaN))
-    throw new Error('Invalid chunk range');
-  const [start, , totalSize] = parts;
+  const { chunkName, chunkFile, destinationDir } = opts;
 
-  // Extract real filename by removing the chunk pattern (.N_M.part)
-  const realFilename = chunkName.replace(/\.\d+_\d+\.part$/, '');
+  const parsed = parseChunkName(chunkName);
+  if (!parsed) throw new Error('Invalid chunk name');
+  const { realFilename, total } = parsed;
+
   const finalPath = path.join(destinationDir, realFilename);
   const chunkPath = path.join(destinationDir, chunkName);
 
@@ -346,17 +369,61 @@ export const handleChunkUpload = async (
   // Move uploaded chunk to temp location
   await fs.move(chunkFile, chunkPath, { overwrite: true });
 
-  // Check if this is the last chunk by checking file size
-  const chunkStat = await fs.stat(chunkPath);
-  const isLastChunk = start + chunkStat.size >= totalSize;
+  // A chunk is complete once every indexed part has arrived on disk -
+  // derived from the "<index>_<total>.part" name, since the client
+  // doesn't always send a byte range for the upload.
+  const receivedChunks = await getChunkFiles(realFilename, destinationDir);
+  const isLastChunk = receivedChunks.length >= total;
 
   if (isLastChunk) {
-    // Merge all chunks into final file
-    await mergeChunks(realFilename, destinationDir);
+    // Multiple concurrent requests can observe the full chunk set at once
+    // (elFinder uploads several chunks in parallel). Only the request that
+    // wins this atomic claim performs the merge, so two requests never
+    // write/delete the same files at the same time.
+    const lockPath = path.join(destinationDir, `.${realFilename}.merging`);
+    try {
+      const fd = await fs.open(lockPath, 'wx');
+      await fs.close(fd);
+    } catch (e: any) {
+      if (e.code === 'EEXIST') {
+        return { isComplete: false, chunkPath };
+      }
+      throw e;
+    }
+
+    try {
+      // Merge all chunks into final file
+      await mergeChunks(realFilename, destinationDir);
+    } finally {
+      await fs.remove(lockPath);
+    }
+
     return { isComplete: true, finalPath, chunkPath };
   }
 
   return { isComplete: false, chunkPath };
+};
+
+/**
+ * Removes any partial chunk files for a failed/aborted chunked upload
+ */
+export const cleanupChunks = async (
+  chunkName: string,
+  destinationDir: string,
+): Promise<void> => {
+  const parsed = parseChunkName(chunkName);
+  if (!parsed) return;
+
+  if (!(await fs.pathExists(destinationDir))) return;
+
+  const chunkFiles = await getChunkFiles(parsed.realFilename, destinationDir);
+
+  await Promise.all(
+    chunkFiles.map((f) => fs.remove(path.join(destinationDir, f))),
+  );
+  await fs.remove(
+    path.join(destinationDir, `.${parsed.realFilename}.merging`),
+  );
 };
 
 /**
@@ -366,20 +433,17 @@ const mergeChunks = async (
   filename: string,
   directory: string,
 ): Promise<void> => {
-  const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const chunkPattern = new RegExp(`^${escapedFilename}\\.\\d+_\\d+\\.part$`);
-
   // Find and sort all chunk files
-  const chunkFiles = (await fs.readdir(directory))
-    .filter((f) => chunkPattern.test(f))
-    .sort((a, b) => {
+  const chunkFiles = (await getChunkFiles(filename, directory)).sort(
+    (a, b) => {
       // Extract chunk numbers for proper sorting
       const aMatch = a.match(/\.(\d+)_\d+\.part$/);
       const bMatch = b.match(/\.(\d+)_\d+\.part$/);
       const aNum = aMatch ? parseInt(aMatch[1]) : 0;
       const bNum = bMatch ? parseInt(bMatch[1]) : 0;
       return aNum - bNum;
-    });
+    },
+  );
 
   const finalPath = path.join(directory, filename);
   const writeStream = fs.createWriteStream(finalPath);

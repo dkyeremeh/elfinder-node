@@ -442,21 +442,27 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       const target = helpers.decode(opts.target, config);
 
       // Handle chunked upload
-      if (opts.chunk && opts.range) {
+      if (opts.chunk) {
         const chunkFile = _files instanceof Array ? _files[0] : _files;
-        if (!chunkFile) {
-          throw new Error('Chunk file not provided');
-        }
 
         let dst = target.absolutePath;
         if (opts.upload_path && opts.upload_path[0]) {
           dst = path.join(dst, path.dirname(opts.upload_path[0]));
         }
 
+        if (!chunkFile) {
+          // No file attached also happens on the client's post-merge ack -
+          // only wipe chunks on a real "chunkfail" abort.
+          const signal = opts.upload?.[0];
+          if (signal === 'chunkfail') {
+            await helpers.cleanupChunks(opts.chunk, dst);
+          }
+          return { added: [] };
+        }
+
         const result = await helpers.handleChunkUpload({
           chunkName: opts.chunk,
           chunkFile: chunkFile.file,
-          range: opts.range,
           destinationDir: dst,
         });
 
@@ -480,7 +486,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
       const files = _files instanceof Array ? _files : [_files!];
 
       const tasks = files
-        .filter((file) => file !== undefined)
+        .filter((file) => file != null)
         .map(async (file, i) => {
           let filename = file.filename;
           let dst = target.absolutePath;
