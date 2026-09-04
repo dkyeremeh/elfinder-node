@@ -156,6 +156,7 @@ const LFS: DriverSetup = (options: Partial<helpers.LFSConfig>) => {
         options: {
           uiCmdMap: [],
           tmbUrl: path.join(config.URL, '.tmb/'),
+          url: config.URL,
         },
       };
 

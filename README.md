@@ -37,7 +37,7 @@ const { elfinder, LocalFileStorage } = require('elfinder-node');
 const roots = [
   {
     driver: LocalFileStorage,
-    URL: '/uploads/', //Required
+    URL: 'https://google.com/uploads/', //Required
     path: '/path/to/dir', //Required
     permissions: { read: 1, write: 1, lock: 0 },
   },
